@@ -161,6 +161,7 @@ void printWiFiStatus() {
 }
 
 void printFloorStatus() {
+  Serial.println("Current status:")
   for (int i = 0; i < 2; i++) {
       Serial.print("Parking Lot ");
       Serial.println(i);

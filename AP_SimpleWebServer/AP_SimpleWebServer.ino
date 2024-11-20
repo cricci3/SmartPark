@@ -157,7 +157,6 @@ void printWiFiStatus() {
   IPAddress ip = WiFi.localIP();
   Serial.print("IP Address: ");
   Serial.println(ip);
-
 }
 
 void printFloorStatus() {

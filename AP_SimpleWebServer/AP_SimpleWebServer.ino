@@ -77,7 +77,7 @@ void setup() {
   floors[0].echarge = 1;
 
   floors[1].standard = 1;
-  floors[1].handicap = 0;
+  floors[1].handicap = 1;
   floors[1].echarge = 1;
 
   for (int i = 0; i < 2; i++) {

@@ -33,15 +33,7 @@ typedef struct {
     int echarge;
 } ParkingStalls;
 
-// Initialize floor data
 ParkingStalls floors[2];
-floors[0].standard = 1;
-floors[0].handicap = 1;
-floors[0].echarge = 1;
-
-floors[1].standard = 1;
-floors[1].handicap = 1;
-floors[1].echarge = 1;
 
 void setup() {
   //Initialize serial and wait for port to open:
@@ -78,6 +70,15 @@ void setup() {
 
   // you're connected now, so print out the status
   printWiFiStatus();
+
+  // Initialize floors
+  floors[0].standard = 1;
+  floors[0].handicap = 1;
+  floors[0].echarge = 1;
+
+  floors[1].standard = 1;
+  floors[1].handicap = 1;
+  floors[1].echarge = 1;
 
   // Print floor status
   for (int i = 0; i < 2; i++) {
@@ -195,4 +196,18 @@ void handleJson(String json) {
   Serial.println(stall_type);
   Serial.print("counter: ");
   Serial.println(counter);
+
+  switch (stall_type) {
+    case 0:
+      floors[floor_id].standard = counter;
+      break;
+    case 1:
+      floors[floor_id].handicap = counter;
+      break;
+    case 2:
+      floors[floor_id].echarge = counter;
+      break;
+    default:
+      Serial.println("Bad floor_id");
+  }
 }

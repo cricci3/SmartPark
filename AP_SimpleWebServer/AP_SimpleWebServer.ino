@@ -179,17 +179,20 @@ void printWiFiStatus() {
   Serial.print("IP Address: ");
   Serial.println(ip);
 
-  // print where to go in a browser:
-  Serial.print("To see this page in action, open a browser to http://");
-  Serial.println(ip);
-
 }
 
 void handleJson(String json) {
   JsonDocument doc;
   deserializeJson(doc, json);
  
-  int floord_id = doc["floor_id"];
-  int floord_id = doc["stall_type"];
-  int floord_id = doc["counter"];
+  int floor_id = doc["floor_id"];
+  int stall_type = doc["stall_type"];
+  int counter = doc["counter"];
+
+  Serial.print("floor_id: ");
+  Serial.println(floor_id);
+  Serial.print("stall_type: ");
+  Serial.println(stall_type);
+  Serial.print("counter: ");
+  Serial.println(counter);
 }

@@ -78,7 +78,7 @@ void setup() {
   if (client.connect(server, 80)) {
     Serial.println("connected to server");
 
-    sendPostRequest(0, 0, 1, server);
+    sendPostRequest(1, 2, 0, server);
   }
 }
 

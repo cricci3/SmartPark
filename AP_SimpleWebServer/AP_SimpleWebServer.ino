@@ -103,7 +103,7 @@ void loop() {
   WiFiClient client = server.accept();   // listen for incoming clients
 
   if (client) {   
-    String body;
+    String lastLine = "";
                                             // if you get a client,
     Serial.println("new client");           // print a message out the serial port
     String currentLine = "";                // make a String to hold incoming data from the client
@@ -122,17 +122,6 @@ void loop() {
             client.println("HTTP/1.1 200 OK");
             client.println("Content-type:text/html");
             client.println();
-            
-            boolean inBody = false;
-            while (client.available()) {
-                c = client.read();
-                if (inBody) {
-                    body += c;
-                }
-                if (c == '\r') {
-                    inBody = true;
-                }
-            }
 
             // The HTTP response ends with another blank line:
             client.println();
@@ -140,6 +129,7 @@ void loop() {
             break;
           }
           else {      // if you got a newline, then clear currentLine:
+            lastLine = currentLine;
             currentLine = "";
           }
         }
@@ -150,9 +140,10 @@ void loop() {
     }
     // close the connection:
     client.stop();
-    Serial.println("client disconnected");
+    Serial.println("client disconnected\nLast line: ");
+    Serial.println(lastLine);
 
-    handleJson(body);
+    handleJson(lastLine);
     printFloorStatus();
   }
 }

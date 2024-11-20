@@ -81,21 +81,7 @@ void setup() {
   floors[1].echarge = 1;
 
   // Print floor status
-  for (int i = 0; i < 2; i++) {
-      Serial.print("Parking Lot ");
-      Serial.println(i);
-
-      Serial.print("Available Car Stalls ");
-      Serial.println(floors[i].standard);
-
-      Serial.print("Available Handicap Stalls ");
-      Serial.println(floors[i].handicap);
-
-      Serial.print("Available E-Charge Stalls ");
-      Serial.println(floors[i].echarge);
-
-      Serial.println();
-  }
+  printFloorStatus();
 }
 
 
@@ -167,6 +153,7 @@ void loop() {
     Serial.println("client disconnected");
 
     handleJson(body);
+    printFloorStatus();
   }
 }
 
@@ -180,6 +167,24 @@ void printWiFiStatus() {
   Serial.print("IP Address: ");
   Serial.println(ip);
 
+}
+
+void printFloorStatus() {
+  for (int i = 0; i < 2; i++) {
+      Serial.print("Parking Lot ");
+      Serial.println(i);
+
+      Serial.print("Available Car Stalls ");
+      Serial.println(floors[i].standard);
+
+      Serial.print("Available Handicap Stalls ");
+      Serial.println(floors[i].handicap);
+
+      Serial.print("Available E-Charge Stalls ");
+      Serial.println(floors[i].echarge);
+
+      Serial.println();
+  }
 }
 
 void handleJson(String json) {

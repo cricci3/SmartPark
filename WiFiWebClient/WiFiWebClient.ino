@@ -30,6 +30,22 @@ IPAddress server(10, 0, 0, 1);  // IP address for example.com (no DNS)
 
 WiFiClient client;
 
+void sendPostRequest(int floorID, int stallType, int counter, IPAddress server) {
+    String jsonPayload = "{\"floor_id\": "+String(floorID) +
+    ", \"stall_type\": " + String(stallType) +
+    ", \"counter\": " + String(counter) + "}";
+
+    // Make a HTTP request:
+    client.println("POST /index.html HTTP/1.1");
+    client.print("Host: ");
+    client.println(server);
+    client.println("Content-Type: application/json");
+    client.print("Content-Length: ");
+    client.println(jsonPayload.length());
+    client.println(jsonPayload);
+    client.println();
+}
+
 void setup() {
   //Initialize serial and wait for port to open:
   Serial.begin(9600);
@@ -61,14 +77,8 @@ void setup() {
   // if you get a connection, report back via serial:
   if (client.connect(server, 80)) {
     Serial.println("connected to server");
-    // Make a HTTP request:
-    client.println("POST /index.html HTTP/1.1");
-    client.print("Host: ");
-    client.println(server);
-    client.println("Content-Type: application/json");
-    client.println("Content-Length: 8");
-    client.println("Giovanni");
-    client.println();
+
+    sendPostRequest(0, 0, 1, server);
   }
 }
 

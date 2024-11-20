@@ -23,7 +23,6 @@ char ssid[] = SECRET_SSID;        // your network SSID (name)
 char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
 int keyIndex = 0;                // your network key index number (needed only for WEP)
 
-int led =  LED_BUILTIN;
 int status = WL_IDLE_STATUS;
 WiFiServer server(80);
 
@@ -41,8 +40,6 @@ void setup() {
   }
 
   Serial.println("Access Point Web Server");
-
-  pinMode(led, OUTPUT);      // set the LED pin mode
 
   // check for the WiFi module:
   if (WiFi.status() == WL_NO_MODULE) {
@@ -71,6 +68,7 @@ void setup() {
   // you're connected now, so print out the status
   printWiFiStatus();
 
+  // Initialized floor data
   ParkingStalls floors[2];
   floors[0].standard = 1;
   floors[0].handicap = 1;
@@ -80,6 +78,7 @@ void setup() {
   floors[1].handicap = 1;
   floors[1].echarge = 1;
 
+  // Print floor status
   for (int i = 0; i < 2; i++) {
       Serial.print("Parking Lot ");
       Serial.println(i);
@@ -115,7 +114,9 @@ void loop() {
   
   WiFiClient client = server.accept();   // listen for incoming clients
 
-  if (client) {                             // if you get a client,
+  if (client) {   
+    String body;
+                                            // if you get a client,
     Serial.println("new client");           // print a message out the serial port
     String currentLine = "";                // make a String to hold incoming data from the client
     while (client.connected()) {            // loop while the client's connected
@@ -133,10 +134,17 @@ void loop() {
             client.println("HTTP/1.1 200 OK");
             client.println("Content-type:text/html");
             client.println();
-
-            // the content of the HTTP response follows the header:
-            client.print("Click <a href=\"/H\">here</a> turn the LED on<br>");
-            client.print("Click <a href=\"/L\">here</a> turn the LED off<br>");
+            
+            boolean inBody = false;
+            while (client.available()) {
+                c = client.read();
+                if (inBody) {
+                    body += c;
+                }
+                if (c == '\r') {
+                    inBody = true;
+                }
+            }
 
             // The HTTP response ends with another blank line:
             client.println();
@@ -150,19 +158,13 @@ void loop() {
         else if (c != '\r') {    // if you got anything else but a carriage return character,
           currentLine += c;      // add it to the end of the currentLine
         }
-
-        // Check to see if the client request was "GET /H" or "GET /L":
-        if (currentLine.endsWith("GET /H")) {
-          digitalWrite(led, HIGH);               // GET /H turns the LED on
-        }
-        if (currentLine.endsWith("GET /L")) {
-          digitalWrite(led, LOW);                // GET /L turns the LED off
-        }
       }
     }
     // close the connection:
     client.stop();
     Serial.println("client disconnected");
+
+    handleJson(body);
   }
 }
 
@@ -180,4 +182,8 @@ void printWiFiStatus() {
   Serial.print("To see this page in action, open a browser to http://");
   Serial.println(ip);
 
+}
+
+void handleJson(String json) {
+  return;
 }

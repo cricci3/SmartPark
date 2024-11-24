@@ -5,6 +5,7 @@
 #include <Thread.h>
 #include <esp_task_wdt.h>
 #include <atomic>
+#include <mutex>
 
 #define WDT_TIMEOUT 15     // Watchdog timeout in seconds
 
@@ -34,6 +35,7 @@ volatile ParkingStalls floors[2];
 struct RequestThread {
     String data;
     Thread thread;
+    static std::mutex watchdogMutex;  // Declare mutex
     
     RequestThread(String d) : data(d) {
         thread.onRun([this]() {
@@ -43,8 +45,10 @@ struct RequestThread {
     }
     
     void processRequest() {
-        activeThreads++;  // Increment active threads count
-        if(activeThreads == 1) {  // First thread activates watchdog
+        std::lock_guard<std::mutex> lock(watchdogMutex);
+
+        int previousCount = activeThreads++;
+        if(previousCount == 0) {  // first thread
             esp_task_wdt_add(NULL);
         }
         esp_task_wdt_reset();
@@ -54,13 +58,20 @@ struct RequestThread {
         printFloorStatus();  
         interrupts();
         
-        activeThreads--;  // Decrement active threads count
-        if(activeThreads == 0) {  // Last thread removes watchdog
+        if(--activeThreads == 0) {  // We're the last thread
             esp_task_wdt_delete(NULL);
         }
         thread.enabled = false;
     }
 };
+
+// Define the static mutex
+std::mutex RequestThread::watchdogMutex;
+
+// Function prototypes
+void printWiFiStatus();
+void printFloorStatus();
+void handleJson(String json);
 
 void setup() {
     Serial.begin(9600);
@@ -182,6 +193,10 @@ void loop() {
     delay(10);
 }
 
+bool isWatchdogActive() {
+    return activeThreads > 0;
+}
+
 void printWiFiStatus() {
     Serial.print("SSID: ");
     Serial.println(WiFi.SSID());
@@ -222,8 +237,7 @@ void handleJson(String json) {
     
     int floor_id = doc["floor_id"];
     int stall_type = doc["stall_type"];
-    //int counter = doc["counter"];
-    bool status = doc["status"];  //status = true se liberato, altrimenti status = false (ha più senso che avere un contatore lato client)
+    bool status = doc["status"];
     
     Serial.print("floor_id: ");
     Serial.println(floor_id);
@@ -236,21 +250,21 @@ void handleJson(String json) {
         switch (stall_type) {
             case 0:
                 if(status)
-                  floors[floor_id].standard = floors[floor_id].standard + 1;
+                    floors[floor_id].standard = floors[floor_id].standard + 1;
                 else
-                  floors[floor_id].standard = floors[floor_id].standard - 1; 
+                    floors[floor_id].standard = floors[floor_id].standard - 1; 
                 break;
             case 1:
                 if(status)
-                  floors[floor_id].handicap = floors[floor_id].handicap + 1;
+                    floors[floor_id].handicap = floors[floor_id].handicap + 1;
                 else
-                  floors[floor_id].handicap = floors[floor_id].handicap - 1; 
+                    floors[floor_id].handicap = floors[floor_id].handicap - 1; 
                 break;
             case 2:
                 if(status)
-                  floors[floor_id].echarge = floors[floor_id].echarge + 1;
+                    floors[floor_id].echarge = floors[floor_id].echarge + 1;
                 else
-                  floors[floor_id].echarge = floors[floor_id].echarge - 1; 
+                    floors[floor_id].echarge = floors[floor_id].echarge - 1; 
                 break;
             default:
                 Serial.println("Invalid stall_type");

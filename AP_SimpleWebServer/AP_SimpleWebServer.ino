@@ -1,31 +1,26 @@
-/*
-  WiFi Web Server LED Blink
-
-  A simple web server that lets you blink an LED via the web.
-  This sketch will create a new access point (with no password).
-  It will then launch a new server and print out the IP address
-  to the Serial Monitor. From there, you can open that address in a web browser
-  to turn on and off the LED on pin 13.
-
-  If the IP address of your board is yourAddress:
-    http://yourAddress/H turns the LED on
-    http://yourAddress/L turns it off
-
-  created 25 Nov 2012
-  by Tom Igoe
-  adapted to WiFi AP by Adafruit
- */
-
 #include <WiFi.h>
-#include "arduino_secrets.h" 
+#include "arduino_secrets.h"
 #include <ArduinoJson.h>
+#include <ThreadController.h>
+#include <Thread.h>
+#include <esp_task_wdt.h>
+#include <atomic>
 
-///////please enter your sensitive data in the Secret tab/arduino_secrets.h
-char ssid[] = SECRET_SSID;        // your network SSID (name)
-char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
+#define WDT_TIMEOUT 15     // Watchdog timeout in seconds
 
+// Network credentials from arduino_secrets.h
+char ssid[] = SECRET_SSID;
+char pass[] = SECRET_PASS;
+
+// Server and connection status
 int status = WL_IDLE_STATUS;
 WiFiServer server(80);
+
+// Atomic counter for active threads
+std::atomic<int> activeThreads(0);
+
+// Thread controller to manage threads
+ThreadController threadController = ThreadController();
 
 typedef struct {
     int standard;
@@ -33,177 +28,234 @@ typedef struct {
     int echarge;
 } ParkingStalls;
 
-ParkingStalls floors[2];
+volatile ParkingStalls floors[2];
+
+// Structure to hold request data
+struct RequestThread {
+    String data;
+    Thread thread;
+    
+    RequestThread(String d) : data(d) {
+        thread.onRun([this]() {
+            this->processRequest();
+        });
+        thread.setInterval(0);
+    }
+    
+    void processRequest() {
+        activeThreads++;  // Increment active threads count
+        if(activeThreads == 1) {  // First thread activates watchdog
+            esp_task_wdt_add(NULL);
+        }
+        esp_task_wdt_reset();
+        
+        noInterrupts();
+        handleJson(data);
+        printFloorStatus();  
+        interrupts();
+        
+        activeThreads--;  // Decrement active threads count
+        if(activeThreads == 0) {  // Last thread removes watchdog
+            esp_task_wdt_delete(NULL);
+        }
+        thread.enabled = false;
+    }
+};
 
 void setup() {
-  //Initialize serial and wait for port to open:
-  Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
+    Serial.begin(9600);
+    while (!Serial) {
+        ; // Wait for serial port to connect
+    }
 
-  Serial.println("Access Point Web Server");
+    Serial.println("Multithread Server with Smart Watchdog");
 
-  // check for the WiFi module:
-  if (WiFi.status() == WL_NO_MODULE) {
-    Serial.println("Communication with WiFi module failed!");
-    // don't continue
-    while (true);
-  }
+    // Initialize Watchdog
+    esp_task_wdt_init(WDT_TIMEOUT, true);
+    
+    if (WiFi.status() == WL_NO_MODULE) {
+        Serial.println("Communication with WiFi module failed!");
+        while (true);
+    }
 
-  WiFi.config(IPAddress(10, 0, 0, 1));
+    WiFi.config(IPAddress(10, 0, 0, 1));
+    
+    Serial.print("Creating access point named: ");
+    Serial.println(ssid);
+    
+    status = WiFi.beginAP(ssid, pass);
+    if (status != WL_AP_LISTENING) {
+        Serial.println("Creating access point failed");
+        while (true);
+    }
 
-  // print the network name (SSID);
-  Serial.print("Creating access point named: ");
-  Serial.println(ssid);
+    server.begin();
+    printWiFiStatus();
 
-  // Create open network. Change this line if you want to create an open network:
-  status = WiFi.beginAP(ssid, pass);
-  if (status != WL_AP_LISTENING) {
-    Serial.println("Creating access point failed");
-    // don't continue
-    while (true);
-  }
+    // Initialize parking floors
+    for (int i = 0; i < 2; i++) {
+        floors[i].standard = 1;
+        floors[i].handicap = 1;
+        floors[i].echarge = 1;
+    }
 
-  // start the web server on port 80
-  server.begin();
-
-  // you're connected now, so print out the status
-  printWiFiStatus();
-
-  // Initialize floors
-  floors[0].standard = 1;
-  floors[0].handicap = 1;
-  floors[0].echarge = 1;
-
-  floors[1].standard = 1;
-  floors[1].handicap = 1;
-  floors[1].echarge = 1;
-
-  // Print floor status
-  printFloorStatus();
+    printFloorStatus();
 }
 
-
 void loop() {
-  // compare the previous status to the current status
-  if (status != WiFi.status()) {
-    // it has changed update the variable
-    status = WiFi.status();
-
-    if (status == WL_AP_CONNECTED) {
-      // a device has connected to the AP
-      Serial.println("Device connected to AP");
-    } else {
-      // a device has disconnected from the AP, and we are back in listening mode
-      Serial.println("Device disconnected from AP");
-    }
-  }
-  
-  WiFiClient client = server.accept();   // listen for incoming clients
-
-  if (client) {   
-    String lastLine = "";
-                                            // if you get a client,
-    Serial.println("new client");           // print a message out the serial port
-    String currentLine = "";                // make a String to hold incoming data from the client
-    while (client.connected()) {            // loop while the client's connected
-      delayMicroseconds(10);                // This is required for the Arduino Nano RP2040 Connect - otherwise it will loop so fast that SPI will never be served.
-      if (client.available()) {             // if there's bytes to read from the client,
-        char c = client.read();             // read a byte, then
-        Serial.write(c);                    // print it out to the serial monitor
-        if (c == '\n') {                    // if the byte is a newline character
-
-          // if the current line is blank, you got two newline characters in a row.
-          // that's the end of the client HTTP request, so send a response:
-          if (currentLine.length() == 0) {
-            // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-            // and a content-type so the client knows what's coming, then a blank line:
-            client.println("HTTP/1.1 200 OK");
-            client.println("Content-type:text/html");
-            client.println();
-
-            // The HTTP response ends with another blank line:
-            client.println();
-            // break out of the while loop:
-            break;
-          }
-          else {      // if you got a newline, then clear currentLine:
-            lastLine = currentLine;
-            currentLine = "";
-          }
+    // Monitor WiFi status
+    if (status != WiFi.status()) {
+        status = WiFi.status();
+        if (status == WL_AP_CONNECTED) {
+            Serial.println("Device connected to AP");
+        } else {
+            Serial.println("Device disconnected from AP");
         }
-        else if (c != '\r') {    // if you got anything else but a carriage return character,
-          currentLine += c;      // add it to the end of the currentLine
-        }
-      }
     }
-    // close the connection:
-    client.stop();
-    Serial.println("client disconnected\nLast line: ");
-    Serial.println(lastLine);
 
-    handleJson(lastLine);
-    printFloorStatus();
-  }
+    // Handle incoming clients
+    WiFiClient client = server.accept();
+    if (client) {
+        Serial.println("New client connected");
+        
+        // Read the request
+        String currentLine = "";
+        String lastLine = "";
+        unsigned long clientStartTime = millis();
+        
+        while (client.connected()) {
+            if (millis() - clientStartTime > 5000) { // 5 second timeout
+                break;
+            }
+            
+            if (client.available()) {
+                char c = client.read();
+                Serial.write(c);
+                clientStartTime = millis();
+                
+                if (c == '\n') {
+                    if (currentLine.length() == 0) {
+                        client.println("HTTP/1.1 200 OK");
+                        client.println("Content-type:text/html");
+                        client.println();
+                        client.println();
+                        break;
+                    } else {
+                        lastLine = currentLine;
+                        currentLine = "";
+                    }
+                } else if (c != '\r') {
+                    currentLine += c;
+                }
+            }
+        }
+
+        // If we got data, create a thread to handle it
+        if (lastLine.length() > 0) {
+            RequestThread* request = new RequestThread(lastLine);
+            if (request != nullptr) {
+                threadController.add(&(request->thread));
+            } else {
+                Serial.println("Failed to create request thread");
+            }
+        }
+
+        client.stop();
+    }
+
+    // Run thread controller
+    if (threadController.size() > 0) {
+        threadController.run();
+    }
+
+    // Clean up completed threads
+    for (int i = 0; i < threadController.size(); i++) {
+        Thread* t = threadController.get(i);
+        if (t && !t->enabled) {
+            RequestThread* rt = (RequestThread*)((char*)t - offsetof(RequestThread, thread));
+            threadController.remove(i);
+            delete rt;
+            i--;
+        }
+    }
+
+    delay(10);
 }
 
 void printWiFiStatus() {
-  // print the SSID of the network you're attached to:
-  Serial.print("SSID: ");
-  Serial.println(WiFi.SSID());
-
-  // print your WiFi shield's IP address:
-  IPAddress ip = WiFi.localIP();
-  Serial.print("IP Address: ");
-  Serial.println(ip);
+    Serial.print("SSID: ");
+    Serial.println(WiFi.SSID());
+    
+    IPAddress ip = WiFi.localIP();
+    Serial.print("IP Address: ");
+    Serial.println(ip);
 }
 
 void printFloorStatus() {
-  Serial.println("Current status:");
-  for (int i = 0; i < 2; i++) {
-      Serial.print("Parking Lot ");
-      Serial.println(i);
-
-      Serial.print("Available Car Stalls ");
-      Serial.println(floors[i].standard);
-
-      Serial.print("Available Handicap Stalls ");
-      Serial.println(floors[i].handicap);
-
-      Serial.print("Available E-Charge Stalls ");
-      Serial.println(floors[i].echarge);
-
-      Serial.println();
-  }
+    Serial.println("Current status:");
+    for (int i = 0; i < 2; i++) {
+        Serial.print("Parking Lot ");
+        Serial.println(i);
+        
+        Serial.print("Available Car Stalls ");
+        Serial.println(floors[i].standard);
+        
+        Serial.print("Available Handicap Stalls ");
+        Serial.println(floors[i].handicap);
+        
+        Serial.print("Available E-Charge Stalls ");
+        Serial.println(floors[i].echarge);
+        
+        Serial.println();
+    }
 }
 
 void handleJson(String json) {
-  JsonDocument doc;
-  deserializeJson(doc, json);
- 
-  int floor_id = doc["floor_id"];
-  int stall_type = doc["stall_type"];
-  int counter = doc["counter"];
-
-  Serial.print("floor_id: ");
-  Serial.println(floor_id);
-  Serial.print("stall_type: ");
-  Serial.println(stall_type);
-  Serial.print("counter: ");
-  Serial.println(counter);
-
-  switch (stall_type) {
-    case 0:
-      floors[floor_id].standard = counter;
-      break;
-    case 1:
-      floors[floor_id].handicap = counter;
-      break;
-    case 2:
-      floors[floor_id].echarge = counter;
-      break;
-    default:
-      Serial.println("Bad floor_id");
-  }
+    StaticJsonDocument<200> doc;
+    DeserializationError error = deserializeJson(doc, json);
+    
+    if (error) {
+        Serial.print("deserializeJson() failed: ");
+        Serial.println(error.c_str());
+        return;
+    }
+    
+    int floor_id = doc["floor_id"];
+    int stall_type = doc["stall_type"];
+    //int counter = doc["counter"];
+    bool status = doc["status"];  //status = true se liberato, altrimenti status = false (ha più senso che avere un contatore lato client)
+    
+    Serial.print("floor_id: ");
+    Serial.println(floor_id);
+    Serial.print("stall_type: ");
+    Serial.println(stall_type);
+    Serial.print("status: ");
+    Serial.println(status);
+    
+    if (floor_id >= 0 && floor_id < 2) {
+        switch (stall_type) {
+            case 0:
+                if(status)
+                  floors[floor_id].standard = floors[floor_id].standard + 1;
+                else
+                  floors[floor_id].standard = floors[floor_id].standard - 1; 
+                break;
+            case 1:
+                if(status)
+                  floors[floor_id].handicap = floors[floor_id].handicap + 1;
+                else
+                  floors[floor_id].handicap = floors[floor_id].handicap - 1; 
+                break;
+            case 2:
+                if(status)
+                  floors[floor_id].echarge = floors[floor_id].echarge + 1;
+                else
+                  floors[floor_id].echarge = floors[floor_id].echarge - 1; 
+                break;
+            default:
+                Serial.println("Invalid stall_type");
+        }
+    } else {
+        Serial.println("Invalid floor_id");
+    }
 }

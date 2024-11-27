@@ -215,18 +215,23 @@ void setup() {
 }
 
 void connectToWiFi() {
+  bool changed = false;
   // attempt to connect to Wifi network:
   while (status != WL_CONNECTED) {
     Serial.print("Attempting to connect to SSID: ");
     Serial.println(ssid);
     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
     status = WiFi.begin(ssid, pass);
+    changed = true;
 
     // wait 3 seconds for connection:
     delay(3000);
   }
-  Serial.println("Connected to wifi");
-  printWifiStatus();
+
+  if (changed) {
+    Serial.println("Connected to wifi");
+    printWifiStatus();
+  }
 }
 
 void updateController() {

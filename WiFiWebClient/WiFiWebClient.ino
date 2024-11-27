@@ -176,14 +176,6 @@ void setup() {
       while (true);
     }
 
-    Serial.println("\nStarting connection to server...");
-    // if you get a connection, report back via serial:
-    // if (client.connect(server, 80)) {
-    //   Serial.println("connected to server");
-
-    //   sendPostRequest(1, 2, 0, server);
-    // }
-
     // Initialize stalls
     stalls.standard = 1;
     stalls.handicap = 1;

@@ -32,7 +32,7 @@ typedef struct {
     int echarge;
 } ParkingStalls;
 
-ParkingStalls floors[2];
+ParkingStalls stalls;
 
 ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
 char ssid[] = SECRET_SSID;        // your network SSID (name)
@@ -196,14 +196,10 @@ void setup() {
     //   sendPostRequest(1, 2, 0, server);
     // }
 
-    // Initialize floors
-    floors[0].standard = 1;
-    floors[0].handicap = 1;
-    floors[0].echarge = 1;
-
-    floors[1].standard = 1;
-    floors[1].handicap = 1;
-    floors[1].echarge = 1;
+    // Initialize stalls
+    stalls.standard = 1;
+    stalls.handicap = 1;
+    stalls.echarge = 1;
     
     // Inizializzazione pin LED
     for (uint8_t i = 0; i < numSensors; i++) {
@@ -239,6 +235,9 @@ void setup() {
 void updateController() {
   while (true) {
     Serial.println("Started thread");
+    Serial.println("Thread sleeping...");
+    ThisThread::sleep_for(20000);
+    Serial.println("Wait time elapsed");
 
     // attempt to connect to Wifi network:
     while (status != WL_CONNECTED) {
@@ -253,26 +252,22 @@ void updateController() {
     Serial.println("Connected to wifi");
     printWifiStatus();
 
-    Serial.println("Thread sleeping...");
-    ThisThread::sleep_for(20000);
-    Serial.println("Wait time elapsed");
-
     for (int i = 0; i < 3; i ++) {
       if (client.connect(server, 80)) {
         Serial.println("connected to server");
         switch (i) {
           case 0:
-            sendPostRequest(0, i, floors[0].standard, server);
+            sendPostRequest(0, i, stalls.standard, server);
             Serial.println("Update sent");
             ThisThread::sleep_for(2000);
             break;
           case 1:
-            sendPostRequest(0, i, floors[0].handicap, server);
+            sendPostRequest(0, i, stalls.handicap, server);
             Serial.println("Update sent");
             ThisThread::sleep_for(2000);
             break;
           case 2:
-            sendPostRequest(0, i, floors[0].echarge, server);
+            sendPostRequest(0, i, stalls.echarge, server);
             Serial.println("Update sent");
             ThisThread::sleep_for(2000);
             break;
@@ -323,26 +318,26 @@ void loop() {
                 setLEDColor(i, 1);  // Rosso quando oggetto vicino
                 switch (i) {
                   case 0:
-                    floors[0].standard = 0;
+                    stalls.standard = 0;
                     break;
                   case 1:
-                    floors[0].handicap = 0;
+                    stalls.handicap = 0;
                     break;
                   case 2:
-                    floors[0].echarge = 0;
+                    stalls.echarge = 0;
                     break;
                 }
             } else {
                 setLEDColor(i, 0);  // Colore default quando oggetto lontano
                 switch (i) {
                   case 0:
-                    floors[0].standard = 1;
+                    stalls.standard = 1;
                     break;
                   case 1:
-                    floors[0].handicap = 1;
+                    stalls.handicap = 1;
                     break;
                   case 2:
-                    floors[0].echarge = 1;
+                    stalls.echarge = 1;
                     break;
                 }
             }

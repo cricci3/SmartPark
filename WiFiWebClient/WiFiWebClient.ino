@@ -27,7 +27,16 @@ Thread thread;
 // Floor number for comms with central controller
 #define FLOOR_NUMBER 0
 
+// WiFi stuff
 WiFiClient client;
+
+ParkingStalls stalls;
+
+char ssid[] = SECRET_SSID;
+char pass[] = SECRET_PASS;
+
+int status = WL_IDLE_STATUS;
+IPAddress server(10, 0, 0, 1);
 
 // Parking status
 typedef struct {
@@ -35,18 +44,6 @@ typedef struct {
     int handicap;
     int echarge;
 } ParkingStalls;
-
-ParkingStalls stalls;
-
-///////please enter your sensitive data in the Secret tab/arduino_secrets.h
-char ssid[] = SECRET_SSID;        // your network SSID (name)
-char pass[] = SECRET_PASS;        // your network password (use for WPA, or use as key for WEP)
-// int keyIndex = 0;                 // your network key Index number (needed only for WEP)
-
-int status = WL_IDLE_STATUS;
-// if you don't want to use DNS (and reduce your sketch size)
-// use the numeric IP instead of the name for the server:
-IPAddress server(10, 0, 0, 1);  // IP address for example.com (no DNS)
 
 
 // to avoid 10000 lines of code we decide to create a structure

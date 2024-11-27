@@ -27,6 +27,13 @@ Thread thread;
 // Floor number for comms with central controller
 #define FLOOR_NUMBER 0
 
+// Parking status
+typedef struct {
+    int standard;
+    int handicap;
+    int echarge;
+} ParkingStalls;
+
 // WiFi stuff
 WiFiClient client;
 
@@ -37,13 +44,6 @@ char pass[] = SECRET_PASS;
 
 int status = WL_IDLE_STATUS;
 IPAddress server(10, 0, 0, 1);
-
-// Parking status
-typedef struct {
-    int standard;
-    int handicap;
-    int echarge;
-} ParkingStalls;
 
 
 // to avoid 10000 lines of code we decide to create a structure

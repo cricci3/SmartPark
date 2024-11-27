@@ -179,6 +179,8 @@ void setup() {
       while (true);
     }
 
+    wifiSetupThread.start(callback(connectToWiFi));
+
     // Initialize stalls
     stalls.standard = 1;
     stalls.handicap = 1;
@@ -212,7 +214,6 @@ void setup() {
         }
     }
 
-    wifiSetupThread.start(callback(connectToWiFi));
     thread.start(callback(updateController));
 }
 

@@ -2,7 +2,13 @@
 #include "Adafruit_VL53L0X.h"
 #include <WiFi.h>
 
-#include "arduino_secrets.h" 
+#include "arduino_secrets.h"
+
+#include "mbed.h"
+using namespace mbed;
+using namespace rtos;
+
+Thread thread;
 
 #define TCA9548A_ADDR 0x70
 
@@ -18,6 +24,15 @@
 #define B3 0
 
 WiFiClient client;
+
+// Parking status
+typedef struct {
+    int standard;
+    int handicap;
+    int echarge;
+} ParkingStalls;
+
+ParkingStalls floors[2];
 
 ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
 char ssid[] = SECRET_SSID;        // your network SSID (name)
@@ -115,6 +130,28 @@ void sendPostRequest(int floorID, int stallType, int counter, IPAddress server) 
     ", \"stall_type\": " + String(stallType) +
     ", \"counter\": " + String(counter) + "}";
 
+    Serial.println("Sent JSON payload:");
+    Serial.println(jsonPayload);
+
+    // Make a HTTP request:
+    client.println("POST /index.html HTTP/1.1");
+    client.print("Host: ");
+    client.println(server);
+    client.println("Content-Type: application/json");
+    client.print("Content-Length: ");
+    client.println(jsonPayload.length());
+    client.println();
+    client.println(jsonPayload);
+    client.println();
+    client.println();
+}
+
+void sendTestRequest(IPAddress server) {
+    String jsonPayload = "{Giovanni}";
+
+    Serial.println("Sent JSON payload:");
+    Serial.println(jsonPayload);
+
     // Make a HTTP request:
     client.println("POST /index.html HTTP/1.1");
     client.print("Host: ");
@@ -172,11 +209,20 @@ void setup() {
 
     Serial.println("\nStarting connection to server...");
     // if you get a connection, report back via serial:
-    if (client.connect(server, 80)) {
-      Serial.println("connected to server");
+    // if (client.connect(server, 80)) {
+    //   Serial.println("connected to server");
 
-      sendPostRequest(1, 2, 0, server);
-    }
+    //   sendPostRequest(1, 2, 0, server);
+    // }
+
+    // Initialize floors
+    floors[0].standard = 1;
+    floors[0].handicap = 1;
+    floors[0].echarge = 1;
+
+    floors[1].standard = 1;
+    floors[1].handicap = 1;
+    floors[1].echarge = 1;
     
     // Inizializzazione pin LED
     for (uint8_t i = 0; i < numSensors; i++) {
@@ -205,6 +251,60 @@ void setup() {
             Serial.println(" OK");
         }
     }
+
+    thread.start(callback(updateController));
+}
+
+void updateController() {
+  while (true) {
+    Serial.println("Started thread");
+
+    // attempt to connect to Wifi network:
+    while (status != WL_CONNECTED) {
+      Serial.print("Attempting to connect to SSID: ");
+      Serial.println(ssid);
+      // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
+      status = WiFi.begin(ssid, pass);
+
+      // wait 3 seconds for connection:
+      delay(3000);
+    }
+    Serial.println("Connected to wifi");
+    printWifiStatus();
+
+    Serial.println("Thread sleeping...");
+    ThisThread::sleep_for(20000);
+    Serial.println("Wait time elapsed");
+
+    for (int i = 0; i < 3; i ++) {
+      if (client.connect(server, 80)) {
+        Serial.println("connected to server");
+        switch (i) {
+          case 0:
+            sendPostRequest(0, i, floors[0].standard, server);
+            Serial.println("Update sent");
+            ThisThread::sleep_for(2000);
+            break;
+          case 1:
+            sendPostRequest(0, i, floors[0].handicap, server);
+            Serial.println("Update sent");
+            ThisThread::sleep_for(2000);
+            break;
+          case 2:
+            sendPostRequest(0, i, floors[0].echarge, server);
+            Serial.println("Update sent");
+            ThisThread::sleep_for(2000);
+            break;
+          // case 3:
+          //   sendTestRequest(server);
+          //   Serial.println("Sent test request");
+          //   break;
+        }
+    }
+    }
+
+    Serial.println("Thread run done");
+  }
 }
 
 void loop() {
@@ -215,44 +315,66 @@ void loop() {
       Serial.write(c);
     }
 
-    // if the server's disconnected, stop the client:
-    if (!client.connected()) {
-      Serial.println();
-      Serial.println("disconnecting from server.");
-      client.stop();
+    // // if the server's disconnected, stop the client:
+    // if (!client.connected()) {
+    //   Serial.println();
+    //   Serial.println("disconnecting from server.");
+    //   client.stop();
 
-      // do nothing forevermore:
-      while (true);
-    }
+    //   // do nothing forevermore:
+    //   while (true);
+    // }
 
     for (uint8_t i = 0; i < numSensors; i++) {
         TCA9548A_Select(sensorBuses[i]);
         VL53L0X_RangingMeasurementData_t measure;
         sensors[i].rangingTest(&measure, false);
         
-        Serial.print("Sensore ");
-        Serial.print(i);
-        Serial.print(" (Bus ");
-        Serial.print(sensorBuses[i]);
-        Serial.print("): ");
+        // Serial.print("Sensore ");
+        // Serial.print(i);
+        // Serial.print(" (Bus ");
+        // Serial.print(sensorBuses[i]);
+        // Serial.print("): ");
         
         if (measure.RangeStatus != 4) {
             int distance = measure.RangeMilliMeter;
-            Serial.print("Distanza: ");
-            Serial.print(distance);
-            Serial.println(" mm");
+            // Serial.print("Distanza: ");
+            // Serial.print(distance);
+            // Serial.println(" mm");
             
             if (distance > 0 && distance <= 70) {
                 setLEDColor(i, 1);  // Rosso quando oggetto vicino
+                switch (i) {
+                  case 0:
+                    floors[0].standard = 0;
+                    break;
+                  case 1:
+                    floors[0].handicap = 0;
+                    break;
+                  case 2:
+                    floors[0].echarge = 0;
+                    break;
+                }
             } else {
                 setLEDColor(i, 0);  // Colore default quando oggetto lontano
+                switch (i) {
+                  case 0:
+                    floors[0].standard = 1;
+                    break;
+                  case 1:
+                    floors[0].handicap = 1;
+                    break;
+                  case 2:
+                    floors[0].echarge = 1;
+                    break;
+                }
             }
         } else {
-            Serial.println("Fuori portata");
+            // Serial.println("Fuori portata");
             setLEDColor(i, 0);  // Colore default quando fuori portata
         }
         
-        Serial.println("-------------------");
+        // Serial.println("-------------------");
     }
     delay(100);
 }

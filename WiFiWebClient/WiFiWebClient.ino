@@ -146,25 +146,6 @@ void sendPostRequest(int floorID, int stallType, int counter, IPAddress server) 
     client.println();
 }
 
-void sendTestRequest(IPAddress server) {
-    String jsonPayload = "{Giovanni}";
-
-    Serial.println("Sent JSON payload:");
-    Serial.println(jsonPayload);
-
-    // Make a HTTP request:
-    client.println("POST /index.html HTTP/1.1");
-    client.print("Host: ");
-    client.println(server);
-    client.println("Content-Type: application/json");
-    client.print("Content-Length: ");
-    client.println(jsonPayload.length());
-    client.println();
-    client.println(jsonPayload);
-    client.println();
-    client.println();
-}
-
 void printWifiStatus() {
   // print the SSID of the network you're attached to:
   Serial.print("SSID: ");
@@ -295,10 +276,6 @@ void updateController() {
             Serial.println("Update sent");
             ThisThread::sleep_for(2000);
             break;
-          // case 3:
-          //   sendTestRequest(server);
-          //   Serial.println("Sent test request");
-          //   break;
         }
     }
     }

@@ -131,7 +131,7 @@ void sendPostRequest(int floorID, int stallType, int counter, IPAddress server) 
     ", \"stall_type\": " + String(stallType) +
     ", \"counter\": " + String(counter) + "}";
 
-    Serial.println("Sent JSON payload:");
+    Serial.print("Sent JSON payload: ");
     Serial.println(jsonPayload);
 
     // Make a HTTP request:
@@ -236,8 +236,7 @@ void connectToWiFi() {
 
 void updateController() {
   while (true) {
-    Serial.println("Started thread");
-    Serial.println("Thread sleeping...");
+    Serial.println("Started thread, thread sleeping...");
     ThisThread::sleep_for(20000);
     Serial.println("Wait time elapsed");
 
@@ -245,21 +244,17 @@ void updateController() {
 
     for (int i = 0; i < 3; i ++) {
       if (client.connect(server, 80)) {
-        Serial.println("connected to server");
         switch (i) {
           case 0:
             sendPostRequest(FLOOR_NUMBER, i, stalls.standard, server);
-            Serial.println("Update sent");
             ThisThread::sleep_for(2000);
             break;
           case 1:
             sendPostRequest(FLOOR_NUMBER, i, stalls.handicap, server);
-            Serial.println("Update sent");
             ThisThread::sleep_for(2000);
             break;
           case 2:
             sendPostRequest(FLOOR_NUMBER, i, stalls.echarge, server);
-            Serial.println("Update sent");
             ThisThread::sleep_for(2000);
             break;
         }

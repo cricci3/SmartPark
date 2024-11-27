@@ -45,6 +45,7 @@ void sendPostRequest(int floorID, int stallType, int counter, IPAddress server) 
     client.println();
     client.println(jsonPayload);
     client.println();
+    client.println();
 }
 
 void setup() {

@@ -24,6 +24,9 @@ Thread thread;
 #define G3 1
 #define B3 0
 
+// Floor number for comms with central controller
+#define FLOOR_NUMBER 0
+
 WiFiClient client;
 
 // Parking status
@@ -242,17 +245,17 @@ void updateController() {
         Serial.println("connected to server");
         switch (i) {
           case 0:
-            sendPostRequest(0, i, stalls.standard, server);
+            sendPostRequest(FLOOR_NUMBER, i, stalls.standard, server);
             Serial.println("Update sent");
             ThisThread::sleep_for(2000);
             break;
           case 1:
-            sendPostRequest(0, i, stalls.handicap, server);
+            sendPostRequest(FLOOR_NUMBER, i, stalls.handicap, server);
             Serial.println("Update sent");
             ThisThread::sleep_for(2000);
             break;
           case 2:
-            sendPostRequest(0, i, stalls.echarge, server);
+            sendPostRequest(FLOOR_NUMBER, i, stalls.echarge, server);
             Serial.println("Update sent");
             ThisThread::sleep_for(2000);
             break;

@@ -42,6 +42,7 @@ void sendPostRequest(int floorID, int stallType, int counter, IPAddress server) 
     client.println("Content-Type: application/json");
     client.print("Content-Length: ");
     client.println(jsonPayload.length());
+    client.println();
     client.println(jsonPayload);
     client.println();
 }

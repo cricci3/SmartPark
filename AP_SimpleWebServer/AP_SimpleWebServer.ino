@@ -104,6 +104,7 @@ void loop() {
 
   if (client) {   
     String lastLine = "";
+    bool header = true;
                                             // if you get a client,
     Serial.println("new client");           // print a message out the serial port
     String currentLine = "";                // make a String to hold incoming data from the client
@@ -113,7 +114,7 @@ void loop() {
         char c = client.read();             // read a byte, then
         Serial.write(c);                    // print it out to the serial monitor
         if (c == '\n') {                    // if the byte is a newline character
-
+          Serial.println("New line");
           // if the current line is blank, you got two newline characters in a row.
           // that's the end of the client HTTP request, so send a response:
           if (currentLine.length() == 0) {
@@ -126,7 +127,11 @@ void loop() {
             // The HTTP response ends with another blank line:
             client.println();
             // break out of the while loop:
-            break;
+            if (!header) {
+              break;
+            } else {
+              header = false;
+            }
           }
           else {      // if you got a newline, then clear currentLine:
             lastLine = currentLine;

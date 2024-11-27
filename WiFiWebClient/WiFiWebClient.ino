@@ -8,6 +8,7 @@
 using namespace mbed;
 using namespace rtos;
 
+Thread wifiSetupThread;
 Thread thread;
 
 #define TCA9548A_ADDR 0x70
@@ -175,19 +176,6 @@ void setup() {
       while (true);
     }
 
-    // attempt to connect to Wifi network:
-    while (status != WL_CONNECTED) {
-      Serial.print("Attempting to connect to SSID: ");
-      Serial.println(ssid);
-      // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-      status = WiFi.begin(ssid, pass);
-
-      // wait 3 seconds for connection:
-      delay(3000);
-    }
-    Serial.println("Connected to wifi");
-    printWifiStatus();
-
     Serial.println("\nStarting connection to server...");
     // if you get a connection, report back via serial:
     // if (client.connect(server, 80)) {
@@ -229,7 +217,23 @@ void setup() {
         }
     }
 
+    wifiSetupThread.start(callback(connectToWiFi));
     thread.start(callback(updateController));
+}
+
+void connectToWiFi() {
+  // attempt to connect to Wifi network:
+  while (status != WL_CONNECTED) {
+    Serial.print("Attempting to connect to SSID: ");
+    Serial.println(ssid);
+    // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
+    status = WiFi.begin(ssid, pass);
+
+    // wait 3 seconds for connection:
+    delay(3000);
+  }
+  Serial.println("Connected to wifi");
+  printWifiStatus();
 }
 
 void updateController() {
@@ -239,18 +243,7 @@ void updateController() {
     ThisThread::sleep_for(20000);
     Serial.println("Wait time elapsed");
 
-    // attempt to connect to Wifi network:
-    while (status != WL_CONNECTED) {
-      Serial.print("Attempting to connect to SSID: ");
-      Serial.println(ssid);
-      // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-      status = WiFi.begin(ssid, pass);
-
-      // wait 3 seconds for connection:
-      delay(3000);
-    }
-    Serial.println("Connected to wifi");
-    printWifiStatus();
+    connectToWiFi();
 
     for (int i = 0; i < 3; i ++) {
       if (client.connect(server, 80)) {

@@ -168,7 +168,7 @@ void setup() {
 void loop() {
     mqttClient.poll();
 
-    // Array to keep track of the previous state of each parking spot (0: free, 1: occupied)
+    // Static array to track the previous state of each parking spot (0: free, 1: occupied)
     static uint8_t previousState[numSensors] = {0};  // Initialize all spots as free
 
     for (uint8_t i = 0; i < numSensors; i++) {
@@ -209,10 +209,13 @@ void loop() {
                     setLEDColor(i, 0);  // Default color when object is far (free)
                 }
 
-                // Send the MQTT message if the state has changed
+                // Send the MQTT message
                 mqttClient.beginMessage(sensorTopic);
                 mqttClient.print(mqttMessage);
                 mqttClient.endMessage();
+
+                // Process pending MQTT tasks after sending the message
+                mqttClient.poll();
 
                 Serial.print("Message sent to topic: ");
                 Serial.println(sensorTopic);
@@ -225,7 +228,10 @@ void loop() {
 
         Serial.println("-------------------");
     }
-    delay(100);
+
+    // Add a short delay to avoid overwhelming the system
+    delay(200);
 }
+
 
 

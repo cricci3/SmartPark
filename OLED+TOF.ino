@@ -34,15 +34,13 @@ const unsigned char epd_bitmap_number_1 [] PROGMEM = {
     0xff, 0x3f, 0xff, 0x3f, 0xff, 0x3f, 0xff, 0x3f, 0xfc, 0x1f, 0xfc, 0x1f, 0xff, 0xff, 0xff, 0xff
 };
 
-
 // Number '2', 16x16px
 const unsigned char epd_bitmap_number_2 [] PROGMEM = {
     0xff, 0xff, 0xff, 0xff, 0xfc, 0x7f, 0xf8, 0x3f, 0xff, 0x3f, 0xff, 0x3f, 0xff, 0x7f, 0xfe, 0xff,
     0xfd, 0xff, 0xfb, 0xff, 0xf7, 0xff, 0xf8, 0x1f, 0xf8, 0x1f, 0xf8, 0x1f, 0xff, 0xff, 0xff, 0xff
 };
 
-
-// Wheelchair icon from user, 16x16px
+// Wheelchair icon, 16x16px
 const unsigned char epd_bitmap_disabled_sign [] PROGMEM = {
     0xff, 0xff, 0xf9, 0xff, 0xf6, 0xff, 0xf9, 0xff, 0xfb, 0xff, 0xf8, 0x3f, 0xf0, 0x3f, 0xeb, 0xff, 
     0xdc, 0x0f, 0xdf, 0xf7, 0xdf, 0xd7, 0xdf, 0xd9, 0xef, 0xbb, 0xf0, 0x7f, 0xfd, 0xff, 0xff, 0xff
@@ -61,8 +59,8 @@ void drawIcon16x16(uint8_t row, uint8_t col, const unsigned char* iconBitmap) {
     int cellY = grid.startY + (row * grid.cellHeight);
     
     // Center the 16x16 icon in the cell
-    int iconX = cellX + 7;  // (31 - 16) / 2 ≈ 7
-    int iconY = cellY + 7;
+    int iconX = cellX + ((grid.cellWidth - 16) / 2);  // Precise horizontal centering
+    int iconY = cellY + ((grid.cellHeight - 16) / 2); // Precise vertical centering
     
     // Draw the icon
     for(int y = 0; y < 16; y++) {
@@ -77,19 +75,36 @@ void drawIcon16x16(uint8_t row, uint8_t col, const unsigned char* iconBitmap) {
     }
 }
 
-void drawText(uint8_t row, uint8_t col, const char* text, int offsetX = 5, int offsetY = 15) {
-    int x = grid.startX + (col * grid.cellWidth) + offsetX;
-    int y = grid.startY + (row * grid.cellHeight) + offsetY;
+void drawText(uint8_t row, uint8_t col, const char* text) {
+    int cellX = grid.startX + (col * grid.cellWidth);
+    int cellY = grid.startY + (row * grid.cellHeight);
+    
+    // Calculate text dimensions
+    int textWidth = display.getStrWidth(text);
+    int textHeight = display.getAscent() - display.getDescent();
+    
+    // Center text in cell
+    int x = cellX + ((grid.cellWidth - textWidth) / 2);
+    int y = cellY + ((grid.cellHeight + textHeight) / 2);
+    
     display.drawStr(x, y, text);
 }
 
 void drawCenteredText(uint8_t row, uint8_t col, const char* text) {
+    // Get cell boundaries
     int cellX = grid.startX + (col * grid.cellWidth);
     int cellY = grid.startY + (row * grid.cellHeight);
     
+    // Calculate text dimensions
     int textWidth = display.getStrWidth(text);
-    int x = cellX + (grid.cellWidth - textWidth) / 2;
-    int y = cellY + grid.cellHeight/2 + 5;
+    int textHeight = display.getAscent() - display.getDescent();
+    
+    // Calculate centered position
+    // Add 1 pixel to x position to account for cell border
+    int x = cellX + ((grid.cellWidth - textWidth) / 2) + 1;
+    // Add half of remaining vertical space to y position, considering text height
+    int y = cellY + ((grid.cellHeight + textHeight) / 2);
+    
     display.drawStr(x, y, text);
 }
 
@@ -113,6 +128,8 @@ void updateDistances(float baseDistance) {
     char distStr[10];
     const float DISTANCE_INCREMENT = 10.0;
     
+    display.setFont(u8g2_font_logisoso16_tn); // Set font before measurements
+    
     for(uint8_t row = 1; row <= 2; row++) {
         for(uint8_t col = 1; col <= 3; col++) {
             float distance = baseDistance + ((row-1)*3 + (col-1)) * DISTANCE_INCREMENT;
@@ -127,7 +144,7 @@ void displayError(const char* message) {
     do {
         display.setDrawColor(DISPLAY_COLOR_WHITE);
         display.setFont(u8g2_font_ncenB08_tr);
-        display.drawStr(0, 10, message);
+        drawCenteredText(1, 1, message); // Center the error message
     } while(display.nextPage());
 }
 
@@ -139,12 +156,12 @@ void updateDisplay() {
     do {
         drawGrid();
         
-        display.setFont(u8g2_font_logisoso16_tn); // Font grande e chiaro per numeri
+        display.setFont(u8g2_font_logisoso16_tn);
         display.setDrawColor(DISPLAY_COLOR_WHITE);
 
-        // Headers and numbers
-        drawIcon16x16(0, 1, epd_bitmap_parking); 
-        drawIcon16x16(0, 2, epd_bitmap_disabled_sign); 
+        // Draw icons
+        drawIcon16x16(0, 1, epd_bitmap_parking);
+        drawIcon16x16(0, 2, epd_bitmap_disabled_sign);
         drawIcon16x16(0, 3, epd_bitmap_power);
         drawIcon16x16(1, 0, epd_bitmap_number_1);
         drawIcon16x16(2, 0, epd_bitmap_number_2);
@@ -157,7 +174,8 @@ void updateDisplay() {
             Serial.print(distCm);
             Serial.println(F(" cm"));
         } else {
-            drawText(3, 0, "Out of range");
+            display.setFont(u8g2_font_ncenB08_tr);
+            drawCenteredText(2, 1, "Out of range");
         }
 
     } while(display.nextPage());

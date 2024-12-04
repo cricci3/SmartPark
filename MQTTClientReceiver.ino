@@ -1,87 +1,69 @@
-/*
-  ArduinoMqttClient - WiFi Simple Receiver
-
-  This example connects to a MQTT broker and subscribes to a topic.
-  When a message is received, it is printed to the Serial Monitor.
-
-  The circuit:
-  - Arduino MKR 1000, MKR 1010 or Uno WiFi Rev2 board
-
-  This example code is in the public domain.
-*/
-
 #include <ArduinoMqttClient.h>
-#if defined(ARDUINO_SAMD_MKRWIFI1010) || defined(ARDUINO_SAMD_NANO_33_IOT) || defined(ARDUINO_AVR_UNO_WIFI_REV2)
-  #include <WiFiNINA.h>
-#elif defined(ARDUINO_SAMD_MKR1000)
-  #include <WiFi101.h>
-#elif defined(ARDUINO_ARCH_ESP8266)
-  #include <ESP8266WiFi.h>
-#elif defined(ARDUINO_PORTENTA_H7_M7) || defined(ARDUINO_NICLA_VISION) || defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_GIGA) || defined(ARDUINO_OPTA)
-  #include <WiFi.h>
-#elif defined(ARDUINO_PORTENTA_C33)
-  #include <WiFiC3.h>
-#elif defined(ARDUINO_UNOR4_WIFI)
-  #include <WiFiS3.h>
-#endif
+#include <WiFi.h>  // Include WiFi library for ESP32
 
-///////please enter your sensitive data in the Secret tab/arduino_secrets.h
-char ssid[] = "parkingG";    // your network SSID (name)
-char pass[] = "ciaoClaudio"; // your network password (use for WPA, or use as key for WEP)
+// WiFi credentials
+char ssid[] = "parkingG";    // your network SSID
+char pass[] = "ciaoClaudio"; // your network password
 
 WiFiClient wifiClient;
 MqttClient mqttClient(wifiClient);
 
 const char broker[] = "test.mosquitto.org";
-int        port     = 1883;
-const char topic[]  = "arduino/simple";
+int port = 1883;
+
+// Maximum number of sensors to handle
+const uint8_t numSensors = 3;
+
+// Array to store sensor topic names
+char sensorTopic[50];
+
+// Function to connect to WiFi
+void connectToWiFi() {
+  Serial.print("Connecting to WiFi...");
+  while (WiFi.begin(ssid, pass) != WL_CONNECTED) {
+    Serial.print(".");
+    delay(1000);
+  }
+  Serial.println("Connected to WiFi!");
+}
+
+// Function to connect to MQTT broker
+void connectToMQTT() {
+  Serial.print("Connecting to MQTT broker...");
+  while (!mqttClient.connect(broker, port)) {
+    Serial.print(".");
+    delay(1000);
+  }
+  Serial.println("Connected to MQTT broker!");
+}
 
 void setup() {
-  //Initialize serial and wait for port to open:
+  // Initialize serial and wait for the port to open
   Serial.begin(9600);
   while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
+    ; // wait for serial port to connect
   }
 
-  // attempt to connect to WiFi network:
-  Serial.print("Attempting to connect to WPA SSID: ");
-  Serial.println(ssid);
-  while (WiFi.begin(ssid, pass) != WL_CONNECTED) {
-    // failed, retry
-    Serial.print(".");
-    delay(5000);
+  // Connect to WiFi and MQTT broker
+  connectToWiFi();
+  connectToMQTT();
+
+  // Subscribe to the sensor topics (e.g., parking/sensor1/status, parking/sensor2/status, etc.)
+  for (uint8_t i = 0; i < numSensors; i++) {
+    snprintf(sensorTopic, sizeof(sensorTopic), "parking/sensor%d/status", i + 1);
+    mqttClient.subscribe(sensorTopic);
+    Serial.print("Subscribed to topic: ");
+    Serial.println(sensorTopic);
   }
 
-  Serial.println("You're connected to the network");
-  Serial.println();
-
-  // connect to the MQTT broker
-  Serial.print("Attempting to connect to the MQTT broker: ");
-  Serial.println(broker);
-
-  if (!mqttClient.connect(broker, port)) {
-    Serial.print("MQTT connection failed! Error code = ");
-    Serial.println(mqttClient.connectError());
-
-    while (1);
-  }
-
-  Serial.println("You're connected to the MQTT broker!");
-  Serial.println();
-
-  // subscribe to a topic
-  Serial.print("Subscribing to topic: ");
-  Serial.println(topic);
-  mqttClient.subscribe(topic);
-
-  Serial.println("Subscribed to topic!");
+  Serial.println("All topics subscribed!");
 }
 
 void loop() {
-  // call poll() regularly to allow the library to process incoming messages
+  // Regularly call poll() to process incoming messages
   mqttClient.poll();
 
-  // check for an incoming message
+  // Check for incoming messages on subscribed topics
   int messageSize = mqttClient.parseMessage();
   if (messageSize) {
     Serial.print("Received a message on topic: ");

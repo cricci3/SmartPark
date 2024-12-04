@@ -1,9 +1,20 @@
 #include <Wire.h>
 #include "Adafruit_VL53L0X.h"
+#include <WiFi.h>
+#include <ArduinoMqttClient.h>
 
 #define TCA9548A_ADDR 0x70
 
-//PIN Custom for led
+// WiFi credentials
+const char ssid[] = "parkingG";    
+const char pass[] = "ciaoClaudio"; 
+
+// MQTT broker
+const char broker[] = "test.mosquitto.org";
+int        port     = 1883;
+const char topic[]  = "parking/status";
+
+// PIN Custom for LED
 #define R1 8
 #define G1 7
 #define B1 6
@@ -14,8 +25,7 @@
 #define G3 1
 #define B3 0
 
-
-// to avoid 10000 lines of code we decide to create a structure
+// Structure for RGB LEDs
 struct RGBLed {
     uint8_t R;
     uint8_t G;
@@ -32,24 +42,27 @@ const RGBLed rgbLeds[] = {
 // LED 1 - Sensor 1 - Bus 2 : yellow
 // LED 2 - Sensor 2 - Bus 6 : purple
 
-
 const uint8_t sensorBuses[] = {0, 2, 6};
 const uint8_t numSensors = sizeof(sensorBuses) / sizeof(sensorBuses[0]);
 
 Adafruit_VL53L0X sensors[numSensors];
 
-// select the bus
+// WiFi and MQTT client
+WiFiClient wifiClient;
+MqttClient mqttClient(wifiClient);
+
+// Select the bus
 void TCA9548A_Select(uint8_t bus) {
     Wire.beginTransmission(TCA9548A_ADDR);
     Wire.write(1 << bus);
     Wire.endTransmission();
 }
 
-// general function to set the led 
+// General function to set the LED 
 void setLEDColor(int ledIndex, int color) {
-    switch(ledIndex) {
+    switch (ledIndex) {
         case 0:  // LED 1
-            switch(color) {
+            switch (color) {
                 case 0:  // Verde 
                     digitalWrite(R1, LOW);
                     digitalWrite(G1, HIGH);
@@ -64,13 +77,13 @@ void setLEDColor(int ledIndex, int color) {
             break;
             
         case 1:  // LED 2 : fundamental to use analogwrite
-            switch(color) {
-                case 0:  // giallo
+            switch (color) {
+                case 0:  // Giallo
                     analogWrite(R2, 255);
                     analogWrite(G2, 165);
                     analogWrite(B2, 0);
                     break;
-                case 1:  // rosso
+                case 1:  // Rosso
                     analogWrite(R2, 255);
                     analogWrite(G2, 0);
                     analogWrite(B2, 0);
@@ -79,13 +92,13 @@ void setLEDColor(int ledIndex, int color) {
             break;
             
         case 2:  // LED 3
-            switch(color) {
-                case 0:  // blu 
+            switch (color) {
+                case 0:  // Blu 
                     analogWrite(R3, 149);
                     analogWrite(G3, 0);
                     analogWrite(B3, 179);
                     break;
-                case 1:  // rosso
+                case 1:  // Rosso
                     analogWrite(R3, 255);
                     analogWrite(G3, 0);
                     analogWrite(B3, 0);
@@ -95,34 +108,57 @@ void setLEDColor(int ledIndex, int color) {
     }
 }
 
+// Connect to WiFi
+void connectToWiFi() {
+    Serial.print("Connecting to WiFi...");
+    while (WiFi.begin(ssid, pass) != WL_CONNECTED) {
+        Serial.print(".");
+        delay(1000);
+    }
+    Serial.println("Connected to WiFi!");
+}
+
+// Connect to MQTT broker
+void connectToMQTT() {
+    Serial.print("Connecting to MQTT broker...");
+    while (!mqttClient.connect(broker, port)) {
+        Serial.print(".");
+        delay(1000);
+    }
+    Serial.println("Connected to MQTT broker!");
+}
+
 void setup() {
     Serial.begin(115200);
     while (!Serial) delay(1);
     Wire.begin();
-    
-    // Inizializzazione pin LED
+
+    connectToWiFi();
+    connectToMQTT();
+
+    // Initialize LED pins
     for (uint8_t i = 0; i < numSensors; i++) {
         pinMode(rgbLeds[i].R, OUTPUT);
         pinMode(rgbLeds[i].G, OUTPUT);
         pinMode(rgbLeds[i].B, OUTPUT);
-        setLEDColor(i, 0);  // Imposta il colore default per ogni LED
+        setLEDColor(i, 0);  // Set default color for each LED
     }
-    
-    // Inizializzazione sensori
+
+    // Initialize sensors
     for (uint8_t i = 0; i < numSensors; i++) {
         TCA9548A_Select(sensorBuses[i]);
-        Serial.print("Inizializzazione sensore ");
+        Serial.print("Initializing sensor ");
         Serial.print(i);
-        Serial.print(" su bus ");
+        Serial.print(" on bus ");
         Serial.println(sensorBuses[i]);
-        
+
         if (!sensors[i].begin()) {
-            Serial.print("ERRORE: Sensore ");
+            Serial.print("ERROR: Sensor ");
             Serial.print(i);
-            Serial.println(" non inizializzato!");
+            Serial.println(" not initialized!");
             while (1);
         } else {
-            Serial.print("Sensore ");
+            Serial.print("Sensor ");
             Serial.print(i);
             Serial.println(" OK");
         }
@@ -130,34 +166,52 @@ void setup() {
 }
 
 void loop() {
+    mqttClient.poll();
+
     for (uint8_t i = 0; i < numSensors; i++) {
         TCA9548A_Select(sensorBuses[i]);
         VL53L0X_RangingMeasurementData_t measure;
         sensors[i].rangingTest(&measure, false);
-        
-        Serial.print("Sensore ");
+
+        Serial.print("Sensor ");
         Serial.print(i);
         Serial.print(" (Bus ");
         Serial.print(sensorBuses[i]);
         Serial.print("): ");
-        
+
         if (measure.RangeStatus != 4) {
             int distance = measure.RangeMilliMeter;
-            Serial.print("Distanza: ");
+            Serial.print("Distance: ");
             Serial.print(distance);
             Serial.println(" mm");
-            
+
+            //il sensore 1 avrà il topic parking/sensor1/status, il sensore 2 avrà parking/sensor2/status
+            char sensorTopic[50];
+            snprintf(sensorTopic, sizeof(sensorTopic), "parking/sensor%d/status", i + 1);
+
             if (distance > 0 && distance <= 100) {
-                setLEDColor(i, 1);  // Rosso quando oggetto vicino
+                setLEDColor(i, 1);  // Red when object is close
+
+                // Send MQTT message for specific sensor
+                char mqttMessage[50];
+                snprintf(mqttMessage, sizeof(mqttMessage), "Occupied: %d mm", distance);
+                mqttClient.beginMessage(sensorTopic);
+                mqttClient.print(mqttMessage);
+                mqttClient.endMessage();
+
+                Serial.print("Message sent to topic: ");
+                Serial.println(sensorTopic);
+                Serial.println(mqttMessage);
             } else {
-                setLEDColor(i, 0);  // Colore default quando oggetto lontano
+                setLEDColor(i, 0);  // Default color when object is far
             }
         } else {
-            Serial.println("Fuori portata");
-            setLEDColor(i, 0);  // Colore default quando fuori portata
+            Serial.println("Out of range");
+            setLEDColor(i, 0);  // Default color when out of range
         }
-        
+
         Serial.println("-------------------");
     }
     delay(100);
 }
+

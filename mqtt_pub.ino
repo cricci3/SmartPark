@@ -18,6 +18,7 @@
 char ssid[] = "parkingG";    // your network SSID (name)
 char pass[] = "ciaoClaudio";    // your network password (use for WPA, or use as key for WEP)
 
+
 // To connect with SSL/TLS:
 // 1) Change WiFiClient to WiFiSSLClient.
 // 2) Change port value from 1883 to 8883.

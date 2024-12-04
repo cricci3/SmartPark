@@ -189,7 +189,7 @@ void loop() {
             Serial.println(" mm");
 
             // Determine the current state: 1 if occupied (distance <= 70), 0 if free
-            uint8_t currentState = (distance > 0 && distance <= 70) ? 1 : 0;
+            uint8_t currentState = (distance > 10 && distance <= 70) ? 1 : 0;
 
             if (currentState != previousState[i]) {  // Check if the state has changed
                 // Update the previous state
@@ -214,15 +214,11 @@ void loop() {
                 mqttClient.print(mqttMessage);
                 mqttClient.endMessage();
 
-                // Process pending MQTT tasks after sending the message
-                mqttClient.poll();
-
                 Serial.print("Message sent to topic: ");
                 Serial.println(sensorTopic);
                 Serial.println(mqttMessage);
             }
         } else {
-            Serial.println("Out of range");
             setLEDColor(i, 0);  // Default color when out of range
         }
 

@@ -189,7 +189,7 @@ void loop() {
             char sensorTopic[50];
             snprintf(sensorTopic, sizeof(sensorTopic), "parking/sensor%d/status", i + 1);
 
-            if (distance > 0 && distance <= 100) {
+            if (distance > 0 && distance <= 70) {
                 setLEDColor(i, 1);  // Red when object is close
 
                 // Send MQTT message for specific sensor

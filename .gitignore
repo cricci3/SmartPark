@@ -1,4 +1,4 @@
 .DS_Store
 
 smartpark-app/node_modules
-smartpark-app/.next/
+smartpark-app/.next

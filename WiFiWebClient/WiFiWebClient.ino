@@ -211,6 +211,10 @@ void setup() {
         }
     }
 
+    // Watchdog setup
+    Watchdog &watchdog = Watchdog::get_instance();
+    watchdog.start(30000);
+
     thread.start(callback(updateController));
 }
 
@@ -262,6 +266,7 @@ void updateController() {
     }
 
     Serial.println("Thread run done");
+    Watchdog::get_instance().kick();
   }
 }
 

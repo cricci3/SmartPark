@@ -168,6 +168,9 @@ void setup() {
 void loop() {
     mqttClient.poll();
 
+    // Array to keep track of the previous state of each parking spot (0: free, 1: occupied)
+    static uint8_t previousState[numSensors] = {0};  // Initialize all spots as free
+
     for (uint8_t i = 0; i < numSensors; i++) {
         TCA9548A_Select(sensorBuses[i]);
         VL53L0X_RangingMeasurementData_t measure;
@@ -185,16 +188,28 @@ void loop() {
             Serial.print(distance);
             Serial.println(" mm");
 
-            //il sensore 1 avrà il topic parking/sensor1/status, il sensore 2 avrà parking/sensor2/status
-            char sensorTopic[50];
-            snprintf(sensorTopic, sizeof(sensorTopic), "parking/sensor%d/status", i + 1);
+            // Determine the current state: 1 if occupied (distance <= 70), 0 if free
+            uint8_t currentState = (distance > 0 && distance <= 70) ? 1 : 0;
 
-            if (distance > 0 && distance <= 70) {
-                setLEDColor(i, 1);  // Red when object is close
+            if (currentState != previousState[i]) {  // Check if the state has changed
+                // Update the previous state
+                previousState[i] = currentState;
 
-                // Send MQTT message for specific sensor
+                // Prepare the MQTT topic
+                char sensorTopic[50];
+                snprintf(sensorTopic, sizeof(sensorTopic), "parking/sensor%d/status", i + 1);
+
+                // Prepare the MQTT message based on the new state
                 char mqttMessage[50];
-                snprintf(mqttMessage, sizeof(mqttMessage), "Occupied: %d mm", distance);
+                if (currentState == 1) {
+                    snprintf(mqttMessage, sizeof(mqttMessage), "Occupied");
+                    setLEDColor(i, 1);  // Red when object is close (occupied)
+                } else {
+                    snprintf(mqttMessage, sizeof(mqttMessage), "Free");
+                    setLEDColor(i, 0);  // Default color when object is far (free)
+                }
+
+                // Send the MQTT message if the state has changed
                 mqttClient.beginMessage(sensorTopic);
                 mqttClient.print(mqttMessage);
                 mqttClient.endMessage();
@@ -202,8 +217,6 @@ void loop() {
                 Serial.print("Message sent to topic: ");
                 Serial.println(sensorTopic);
                 Serial.println(mqttMessage);
-            } else {
-                setLEDColor(i, 0);  // Default color when object is far
             }
         } else {
             Serial.println("Out of range");
@@ -214,4 +227,5 @@ void loop() {
     }
     delay(100);
 }
+
 

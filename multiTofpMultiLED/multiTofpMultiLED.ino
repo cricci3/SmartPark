@@ -153,6 +153,12 @@ void setupConnection() {
 
 void updateMQTT() {
   Serial.print("MQTT thread started");
+
+  Serial.println("Waiting for connection...");
+  while (connection_setup_done != true) {
+      ThisThread::sleep_for(1000);
+  }
+
   while (true) {
     // Prepare the MQTT topic
     char sensorTopic[50];
@@ -176,7 +182,7 @@ void updateMQTT() {
 
 void setup() {
     Serial.begin(115200);
-    // while (!Serial) delay(1);
+    while (!Serial) delay(1);
     Wire.begin();
 
     // check for the WiFi module:
@@ -221,10 +227,6 @@ void setup() {
         }
     }
 
-    Serial.println("Waiting for connection...");
-    while (connection_setup_done != true) {
-        ThisThread::sleep_for(1000);
-    }
     mqttUpdateThread.start(callback(updateMQTT));
 }
 
@@ -312,7 +314,7 @@ void loop() {
     }
 
     // Add a short delay to avoid overwhelming the system
-    delay(200);
+    ThisThread::sleep_for(200);
 }
 
 

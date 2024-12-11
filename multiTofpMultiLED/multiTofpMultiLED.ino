@@ -10,6 +10,7 @@ using namespace rtos;
 
 Thread connectionSetupThread;
 Thread mqttUpdateThread;
+Thread serialSetupThread;
 
 bool connection_setup_done = false;
 
@@ -180,9 +181,16 @@ void updateMQTT() {
   }
 }
 
+void setupSerial() {
+  while (!Serial) {
+    ThisThread::sleep_for(1);
+  }
+  Serial.println("Serial connected");
+}
+
 void setup() {
     Serial.begin(115200);
-    while (!Serial) delay(1);
+    serialSetupThread.start(callback(setupSerial));
     Wire.begin();
 
     // check for the WiFi module:

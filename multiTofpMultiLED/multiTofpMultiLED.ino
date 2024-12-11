@@ -27,6 +27,18 @@ const char broker[] = "test.mosquitto.org";
 int        port     = 1883;
 const char topic[]  = "parking/status";
 
+// Floor number for comms with central controller
+#define FLOOR_NUMBER 0
+
+// Parking status
+typedef struct {
+    int standard;
+    int handicap;
+    int echarge;
+} ParkingStalls;
+
+ParkingStalls stalls;
+
 // PIN Custom for LED
 #define R1 8
 #define G1 7
@@ -147,33 +159,40 @@ void updateMQTT() {
   while (true) {
 
     for (uint8_t i = 0; i < numSensors; i++) {
-      TCA9548A_Select(sensorBuses[i]);
-      VL53L0X_RangingMeasurementData_t measure;
-      sensors[i].rangingTest(&measure, false);
       // Prepare the MQTT topic
       char sensorTopic[50];
       snprintf(sensorTopic, sizeof(sensorTopic), "parking/sensor%d/status", i + 1);
 
-      if (measure.RangeStatus != 4) {
-          int distance = measure.RangeMilliMeter;
-          uint8_t currentState = (distance > 10 && distance <= 70) ? 1 : 0;
-
-          // Prepare the MQTT message based on the new state
-          char mqttMessage[50];
-          if (currentState == 1) {
-              snprintf(mqttMessage, sizeof(mqttMessage), "Occupied");
-          } else {
-              snprintf(mqttMessage, sizeof(mqttMessage), "Free");
-          }
-          // Send the MQTT message
-          mqttClient.beginMessage(sensorTopic);
-          mqttClient.print(mqttMessage);
-          mqttClient.endMessage();
-
-          Serial.print("Message sent to topic: ");
-          Serial.println(sensorTopic);
-          Serial.println(mqttMessage);
+      uint8_t currentState;
+      switch (i) {
+      case 0:
+        currentState = stalls.standard;
+        break;
+      case 1:
+        currentState = stalls.handicap;
+        break;
+      case 2:
+        currentState = stalls.echarge;
+        break;
       }
+
+      // Prepare the MQTT message based on the new state
+      char mqttMessage[50];
+      if (currentState == 1) {
+          snprintf(mqttMessage, sizeof(mqttMessage), "Occupied");
+      } else {
+          snprintf(mqttMessage, sizeof(mqttMessage), "Free");
+      }
+      // Send the MQTT message
+      mqttClient.beginMessage(sensorTopic);
+      mqttClient.print(mqttMessage);
+      mqttClient.endMessage();
+
+      Serial.print("Message sent to topic: ");
+      Serial.println(sensorTopic);
+      Serial.println(mqttMessage);
+
+      ThisThread::sleep_for(3000);
     }
     
     ThisThread::sleep_for(10000);
@@ -193,6 +212,11 @@ void setup() {
     }
 
     connectionSetupThread.start(callback(setupConnection));
+
+    // Initialize stalls
+    stalls.standard = 1;
+    stalls.handicap = 1;
+    stalls.echarge = 1;
 
     // Initialize LED pins
     for (uint8_t i = 0; i < numSensors; i++) {
@@ -265,12 +289,48 @@ void loop() {
 
                 if (currentState == 1) {
                     setLEDColor(i, 1);  // Red when object is close (occupied)
+
+                    switch (i) {
+                    case 0:
+                      stalls.standard = 0;
+                      break;
+                    case 1:
+                      stalls.handicap = 0;
+                      break;
+                    case 2:
+                      stalls.echarge = 0;
+                      break;
+                  }
                 } else {
                     setLEDColor(i, 0);  // Default color when object is far (free)
+
+                    switch (i) {
+                    case 0:
+                      stalls.standard = 1;
+                      break;
+                    case 1:
+                      stalls.handicap = 1;
+                      break;
+                    case 2:
+                      stalls.echarge = 1;
+                      break;
+                    }
                 }
             }
         } else {
             setLEDColor(i, 0);  // Default color when out of range
+
+            switch (i) {
+            case 0:
+              stalls.standard = 1;
+              break;
+            case 1:
+              stalls.handicap = 1;
+              break;
+            case 2:
+              stalls.echarge = 1;
+              break;
+            }
         }
 
         // Serial.println("-------------------");

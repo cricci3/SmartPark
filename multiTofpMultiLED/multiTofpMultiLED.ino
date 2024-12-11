@@ -137,6 +137,7 @@ void setLEDColor(int ledIndex, int color) {
 void setupConnection() {
     Serial.println("Connecting to WiFi...");
     while (wifi_status != WL_CONNECTED) {
+        Serial.println("Attempting WiFi connection");
         wifi_status = WiFi.begin(ssid, pass);
         ThisThread::sleep_for(1000);
     }

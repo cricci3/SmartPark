@@ -255,7 +255,7 @@ void loop() {
 
             if (currentState != previousState[i]) {  // Check if the state has changed
                 Serial.print("Sensor: ");
-                Serial.print(i);
+                Serial.println(i);
                 Serial.print("Distance: ");
                 Serial.print(distance);
                 Serial.println(" mm");

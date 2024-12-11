@@ -26,7 +26,6 @@ int mqtt_status = 0;
 // MQTT broker
 const char broker[] = "test.mosquitto.org";
 int        port     = 1883;
-const char topic[]  = "parking/status";
 
 // Floor number for comms with central controller
 #define FLOOR_NUMBER 0

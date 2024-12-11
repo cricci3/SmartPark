@@ -155,7 +155,7 @@ void updateMQTT() {
   Serial.print("MQTT thread started");
 
   Serial.println("Waiting for connection...");
-  while (connection_setup_done != true) {
+  while (!connection_setup_done) {
       ThisThread::sleep_for(1000);
   }
 

@@ -32,9 +32,9 @@ const char topic[]  = "parking/status";
 
 // Parking status
 typedef struct {
-    int standard;
-    int handicap;
-    int echarge;
+    bool standard;
+    bool handicap;
+    bool echarge;
 } ParkingStalls;
 
 ParkingStalls stalls;
@@ -163,7 +163,7 @@ void updateMQTT() {
       char sensorTopic[50];
       snprintf(sensorTopic, sizeof(sensorTopic), "parking/sensor%d/status", i + 1);
 
-      uint8_t currentState;
+      bool stall_occupied;
       switch (i) {
       case 0:
         currentState = stalls.standard;
@@ -178,7 +178,7 @@ void updateMQTT() {
 
       // Prepare the MQTT message based on the new state
       char mqttMessage[50];
-      if (currentState == 1) {
+      if (stall_occupied == 1) {
           snprintf(mqttMessage, sizeof(mqttMessage), "Occupied");
       } else {
           snprintf(mqttMessage, sizeof(mqttMessage), "Free");
@@ -214,9 +214,9 @@ void setup() {
     connectionSetupThread.start(callback(setupConnection));
 
     // Initialize stalls
-    stalls.standard = 1;
-    stalls.handicap = 1;
-    stalls.echarge = 1;
+    stalls.standard = false;
+    stalls.handicap = false;
+    stalls.echarge = false;
 
     // Initialize LED pins
     for (uint8_t i = 0; i < numSensors; i++) {
@@ -292,13 +292,13 @@ void loop() {
 
                     switch (i) {
                     case 0:
-                      stalls.standard = 0;
+                      stalls.standard = true;
                       break;
                     case 1:
-                      stalls.handicap = 0;
+                      stalls.handicap = true;
                       break;
                     case 2:
-                      stalls.echarge = 0;
+                      stalls.echarge = true;
                       break;
                   }
                 } else {
@@ -306,13 +306,13 @@ void loop() {
 
                     switch (i) {
                     case 0:
-                      stalls.standard = 1;
+                      stalls.standard = false;
                       break;
                     case 1:
-                      stalls.handicap = 1;
+                      stalls.handicap = false;
                       break;
                     case 2:
-                      stalls.echarge = 1;
+                      stalls.echarge = false;
                       break;
                     }
                 }
@@ -322,13 +322,13 @@ void loop() {
 
             switch (i) {
             case 0:
-              stalls.standard = 1;
+              stalls.standard = false;
               break;
             case 1:
-              stalls.handicap = 1;
+              stalls.handicap = false;
               break;
             case 2:
-              stalls.echarge = 1;
+              stalls.echarge = false;
               break;
             }
         }

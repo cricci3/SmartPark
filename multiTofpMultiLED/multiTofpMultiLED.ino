@@ -145,7 +145,7 @@ void setupConnection() {
 
     Serial.print("Connecting to MQTT broker...");
     while (!mqtt_status) {
-        mqtt_status = mqttClient.connect(broker, port)
+        mqtt_status = mqttClient.connect(broker, port);
         ThisThread::sleep_for(1000);
     }
     Serial.println("Connected to MQTT broker!");

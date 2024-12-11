@@ -193,7 +193,6 @@ void setup() {
     }
 
     connectionSetupThread.start(callback(setupConnection));
-
     mqttUpdateThread.start(callback(updateMQTT));
 
     // Initialize stalls

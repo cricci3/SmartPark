@@ -194,6 +194,8 @@ void setup() {
 
     connectionSetupThread.start(callback(setupConnection));
 
+    mqttUpdateThread.start(callback(updateMQTT));
+
     // Initialize stalls
     stalls.standard = false;
     stalls.handicap = false;
@@ -226,8 +228,6 @@ void setup() {
             Serial.println(" OK");
         }
     }
-
-    mqttUpdateThread.start(callback(updateMQTT));
 }
 
 void loop() {

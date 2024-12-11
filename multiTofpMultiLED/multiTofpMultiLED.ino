@@ -154,43 +154,21 @@ void setupConnection() {
 void updateMQTT() {
   Serial.print("MQTT thread started");
   while (true) {
+    // Prepare the MQTT topic
+    char sensorTopic[50];
+    snprintf(sensorTopic, sizeof(sensorTopic), "parking/floor%d", FLOOR_NUMBER);
 
-    for (uint8_t i = 0; i < numSensors; i++) {
-      // Prepare the MQTT topic
-      char sensorTopic[50];
-      snprintf(sensorTopic, sizeof(sensorTopic), "parking/sensor%d/status", i + 1);
+    // Prepare the MQTT message based on the new state
+    char mqttMessage[50];
+    snprintf(mqttMessage, sizeof(mqttMessage), "%d,%d,%d", stalls.standard, stalls.handicap, stalls.echarge);
+    // Send the MQTT message
+    mqttClient.beginMessage(sensorTopic);
+    mqttClient.print(mqttMessage);
+    mqttClient.endMessage();
 
-      bool stall_occupied;
-      switch (i) {
-      case 0:
-        stall_occupied = stalls.standard;
-        break;
-      case 1:
-        stall_occupied = stalls.handicap;
-        break;
-      case 2:
-        stall_occupied = stalls.echarge;
-        break;
-      }
-
-      // Prepare the MQTT message based on the new state
-      char mqttMessage[50];
-      if (stall_occupied == 1) {
-          snprintf(mqttMessage, sizeof(mqttMessage), "Occupied");
-      } else {
-          snprintf(mqttMessage, sizeof(mqttMessage), "Free");
-      }
-      // Send the MQTT message
-      mqttClient.beginMessage(sensorTopic);
-      mqttClient.print(mqttMessage);
-      mqttClient.endMessage();
-
-      Serial.print("Message sent to topic: ");
-      Serial.println(sensorTopic);
-      Serial.println(mqttMessage);
-
-      ThisThread::sleep_for(3000);
-    }
+    Serial.print("Message sent to topic: ");
+    Serial.println(sensorTopic);
+    Serial.println(mqttMessage);
     
     ThisThread::sleep_for(10000);
   }

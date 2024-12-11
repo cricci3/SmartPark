@@ -191,6 +191,7 @@ void setupSerial() {
 void setup() {
     Serial.begin(115200);
     serialSetupThread.start(callback(setupSerial));
+    ThisThread::sleep_for(1000);
     Wire.begin();
 
     // check for the WiFi module:

@@ -143,11 +143,13 @@ void setupConnection() {
 }
 
 void updateMQTT() {
-  Serial.print("MQTT thread started, waiting...");
+  Serial.print("MQTT thread started");
   while (true) {
-    ThisThread::sleep_for(10000);
 
     for (uint8_t i = 0; i < numSensors; i++) {
+      TCA9548A_Select(sensorBuses[i]);
+      VL53L0X_RangingMeasurementData_t measure;
+      sensors[i].rangingTest(&measure, false);
       // Prepare the MQTT topic
       char sensorTopic[50];
       snprintf(sensorTopic, sizeof(sensorTopic), "parking/sensor%d/status", i + 1);
@@ -173,6 +175,8 @@ void updateMQTT() {
           Serial.println(mqttMessage);
       }
     }
+    
+    ThisThread::sleep_for(10000);
   }
 }
 
@@ -258,7 +262,7 @@ void loop() {
                 Serial.println("-------------------");
                 // Update the previous state
                 previousState[i] = currentState;
-                
+
                 if (currentState == 1) {
                     setLEDColor(i, 1);  // Red when object is close (occupied)
                 } else {

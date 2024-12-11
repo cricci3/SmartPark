@@ -3,6 +3,14 @@
 #include <WiFi.h>
 #include <ArduinoMqttClient.h>
 
+// Thread stuff
+#include "mbed.h"
+using namespace mbed;
+using namespace rtos;
+
+Thread wifiSetupThread;
+Thread mqttUpdateThread;
+
 #define TCA9548A_ADDR 0x70
 
 // WiFi credentials
@@ -113,10 +121,29 @@ void connectToWiFi() {
     Serial.print("Connecting to WiFi...");
     while (WiFi.begin(ssid, pass) != WL_CONNECTED) {
         Serial.print(".");
-        delay(1000);
+      ThisThread::sleep_for(1000);
     }
     Serial.println("Connected to WiFi!");
 }
+// void connectToWiFi() {
+//   bool changed = false;
+//   // attempt to connect to Wifi network:
+//   while (status != WL_CONNECTED) {
+//     Serial.print("Attempting to connect to SSID: ");
+//     Serial.println(ssid);
+//     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
+//     status = WiFi.begin(ssid, pass);
+//     changed = true;
+
+//     // wait 3 seconds for connection:
+      // ThisThread::sleep_for(3000);
+//   }
+
+//   if (changed) {
+//     Serial.println("Connected to wifi");
+//     printWifiStatus();
+//   }
+// }
 
 // Connect to MQTT broker
 void connectToMQTT() {
@@ -133,7 +160,15 @@ void setup() {
     while (!Serial) delay(1);
     Wire.begin();
 
-    connectToWiFi();
+    // check for the WiFi module:
+    if (WiFi.status() == WL_NO_SHIELD) {
+      Serial.println("Communication with WiFi module failed!");
+      // don't continue
+      while (true);
+    }
+
+    wifiSetupThread.start(callback(connectToWiFi));
+
     connectToMQTT();
 
     // Initialize LED pins

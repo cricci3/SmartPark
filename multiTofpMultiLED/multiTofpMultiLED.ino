@@ -166,13 +166,13 @@ void updateMQTT() {
       bool stall_occupied;
       switch (i) {
       case 0:
-        currentState = stalls.standard;
+        stall_occupied = stalls.standard;
         break;
       case 1:
-        currentState = stalls.handicap;
+        stall_occupied = stalls.handicap;
         break;
       case 2:
-        currentState = stalls.echarge;
+        stall_occupied = stalls.echarge;
         break;
       }
 

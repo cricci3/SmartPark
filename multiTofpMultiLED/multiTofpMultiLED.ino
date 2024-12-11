@@ -241,6 +241,10 @@ void setup() {
 void loop() {
     mqttClient.poll();
 
+    if (!Serial) {
+        serialSetupThread.start(callback(setupSerial));
+    }
+
     // Static array to track the previous state of each parking spot (0: free, 1: occupied)
     static uint8_t previousState[numSensors] = {0};  // Initialize all spots as free
 

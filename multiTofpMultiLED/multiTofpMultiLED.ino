@@ -155,6 +155,28 @@ void connectToMQTT() {
     Serial.println("Connected to MQTT broker!");
 }
 
+void updateMQTT() {
+  Serial.print("MQTT thread started, waiting...");
+  while (True) {
+    ThisThread::sleep_for(10000);
+
+    for (uint8_t i = 0; i < numSensors; i++) {
+      // Prepare the MQTT topic
+      char sensorTopic[50];
+      snprintf(sensorTopic, sizeof(sensorTopic), "parking/sensor%d/status", i + 1);
+
+      // Send the MQTT message
+      mqttClient.beginMessage(sensorTopic);
+      mqttClient.print(mqttMessage);
+      mqttClient.endMessage();
+
+      Serial.print("Message sent to topic: ");
+      Serial.println(sensorTopic);
+      Serial.println(mqttMessage);
+    }
+  }
+}
+
 void setup() {
     Serial.begin(115200);
     while (!Serial) delay(1);
@@ -168,8 +190,6 @@ void setup() {
     }
 
     wifiSetupThread.start(callback(connectToWiFi));
-
-    connectToMQTT();
 
     // Initialize LED pins
     for (uint8_t i = 0; i < numSensors; i++) {
@@ -198,6 +218,9 @@ void setup() {
             Serial.println(" OK");
         }
     }
+
+    connectToMQTT();
+    mqttUpdateThread.start(callback(updateMQTT));
 }
 
 void loop() {

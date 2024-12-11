@@ -136,14 +136,14 @@ void setLEDColor(int ledIndex, int color) {
 
 // Connect to WiFi and MQTT
 void setupConnection() {
-    Serial.print("Connecting to WiFi...");
+    Serial.println("Connecting to WiFi...");
     while (wifi_status != WL_CONNECTED) {
         wifi_status = WiFi.begin(ssid, pass);
         ThisThread::sleep_for(1000);
     }
     Serial.println("Connected to WiFi!");
 
-    Serial.print("Connecting to MQTT broker...");
+    Serial.println("Connecting to MQTT broker...");
     while (!mqtt_status) {
         mqtt_status = mqttClient.connect(broker, port);
         ThisThread::sleep_for(1000);

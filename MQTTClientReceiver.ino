@@ -3,6 +3,16 @@
 #include <WiFi.h>
 #include <ArduinoMqttClient.h>
 
+using namespace mbed;
+using namespace rtos;
+
+// inserisci nel topic
+#define FLOOR_NUMBER 0
+
+Thread connectionSetupThread;
+bool connection_setup_done = false;
+int status = WL_IDLE_STATUS;
+
 // WiFi credentials
 char ssid[] = "parkingG";    // your network SSID
 char pass[] = "ciaoClaudio"; // your network password
@@ -11,6 +21,26 @@ WiFiClient wifiClient;
 MqttClient mqttClient(wifiClient);
 const char broker[] = "test.mosquitto.org";
 int port = 1883;
+
+// Connect to WiFi and MQTT
+void setupConnection() {
+    Serial.print("Connecting to WiFi...");
+    while (status != WL_CONNECTED) {
+        status = WiFi.begin(ssid, pass);
+        ThisThread::sleep_for(1000);
+    }
+    Serial.println("Connected to WiFi!");
+
+    Serial.print("Connecting to MQTT broker...");
+    while (!mqttClient.connect(broker, port)) {
+        ThisThread::sleep_for(1000);
+    }
+    Serial.println("Connected to MQTT broker!");
+
+    mqttClient.subscribe("parking/floor0");
+    mqttClient.subscribe("parking/floor1");
+    Serial.println("All topics subscribed!");
+}
 
 // Display setup
 U8G2_SSD1327_EA_W128128_F_4W_SW_SPI display(U8G2_R0, 13, 5, 10, 7, 8);
@@ -111,26 +141,6 @@ void drawGrid() {
     }
 }
 
-// Function to connect to WiFi
-void connectToWiFi() {
-    Serial.print("Connecting to WiFi...");
-    while (WiFi.begin(ssid, pass) != WL_CONNECTED) {
-        Serial.print(".");
-        delay(1000);
-    }
-    Serial.println("Connected to WiFi!");
-}
-
-// Function to connect to MQTT broker
-void connectToMQTT() {
-    Serial.print("Connecting to MQTT broker...");
-    while (!mqttClient.connect(broker, port)) {
-        Serial.print(".");
-        delay(1000);
-    }
-    Serial.println("Connected to MQTT broker!");
-}
-
 // Function to parse the received payload
 void parse_update(String payload) {
     // Find the positions of the commas
@@ -151,7 +161,7 @@ void parse_update(String payload) {
     Serial.print("Electric: ");
     Serial.println(electricValue);
 
-    updateParkingDisplay(parkingValue,disabledValue,electricValue)
+    updateParkingDisplay(parkingValue,disabledValue,electricValue);
 }
 
 // Function to update display with parking status
@@ -168,10 +178,19 @@ void updateParkingDisplay(int parkingValue, int disabledValue, int electricValue
         drawIcon16x16(0, 2, epd_bitmap_disabled_sign);
         drawIcon16x16(0, 3, epd_bitmap_power);
 
+        // Convert integers to strings for display
+        char parkingStr[4];
+        char disabledStr[4];
+        char electricStr[4];
+        
+        sprintf(parkingStr, "%d", parkingValue);
+        sprintf(disabledStr, "%d", disabledValue);
+        sprintf(electricStr, "%d", electricValue);
+
         // Display the status
-        drawCenteredText(1, 1, parkingValue);
-        drawCenteredText(1, 2, disabledValue);
-        drawCenteredText(1, 3, electricValue);
+        drawCenteredText(1, 1, parkingStr);
+        drawCenteredText(1, 2, disabledStr);
+        drawCenteredText(1, 3, electricStr);
 
     } while(display.nextPage());
 }
@@ -183,13 +202,7 @@ void setup() {
     display.setContrast(255);
     
     // Connect to WiFi and MQTT broker
-    connectToWiFi();
-    connectToMQTT();
-
-    // Subscribe to topics
-    mqttClient.subscribe("parking/floor0");
-    mqttClient.subscribe("parking/floor1");
-    Serial.println("All topics subscribed!");
+    connectionSetupThread.start(callback(setupConnection));
 }
 
 void loop() {

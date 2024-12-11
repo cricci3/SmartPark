@@ -176,22 +176,26 @@ void loop() {
         VL53L0X_RangingMeasurementData_t measure;
         sensors[i].rangingTest(&measure, false);
 
-        Serial.print("Sensor ");
-        Serial.print(i);
-        Serial.print(" (Bus ");
-        Serial.print(sensorBuses[i]);
-        Serial.print("): ");
+        // Serial.print("Sensor ");
+        // Serial.print(i);
+        // Serial.print(" (Bus ");
+        // Serial.print(sensorBuses[i]);
+        // Serial.print("): ");
 
         if (measure.RangeStatus != 4) {
             int distance = measure.RangeMilliMeter;
-            Serial.print("Distance: ");
-            Serial.print(distance);
-            Serial.println(" mm");
+            // Serial.print("Distance: ");
+            // Serial.print(distance);
+            // Serial.println(" mm");
 
             // Determine the current state: 1 if occupied (distance <= 70), 0 if free
             uint8_t currentState = (distance > 10 && distance <= 70) ? 1 : 0;
 
             if (currentState != previousState[i]) {  // Check if the state has changed
+                Serial.print("Distance: ");
+                Serial.print(distance);
+                Serial.println(" mm");
+                Serial.println("-------------------");
                 // Update the previous state
                 previousState[i] = currentState;
 
@@ -222,7 +226,7 @@ void loop() {
             setLEDColor(i, 0);  // Default color when out of range
         }
 
-        Serial.println("-------------------");
+        // Serial.println("-------------------");
     }
 
     // Add a short delay to avoid overwhelming the system

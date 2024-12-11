@@ -176,7 +176,7 @@ void updateMQTT() {
 
 void setup() {
     Serial.begin(115200);
-    while (!Serial) delay(1);
+    // while (!Serial) delay(1);
     Wire.begin();
 
     // check for the WiFi module:

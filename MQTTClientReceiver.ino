@@ -132,7 +132,7 @@ void connectToMQTT() {
 }
 
 // Function to parse the received payload
-void parsePayload(String payload) {
+void parse_update(String payload) {
     // Find the positions of the commas
     int firstComma = payload.indexOf(',');
     int secondComma = payload.lastIndexOf(',');
@@ -150,10 +150,12 @@ void parsePayload(String payload) {
     Serial.println(disabledValue);
     Serial.print("Electric: ");
     Serial.println(electricValue);
+
+    updateParkingDisplay(parkingValue,disabledValue,electricValue)
 }
 
 // Function to update display with parking status
-void updateParkingDisplay() {
+void updateParkingDisplay(int parkingValue, int disabledValue, int electricValue) {
     display.firstPage();
     do {
         drawGrid();
@@ -166,15 +168,10 @@ void updateParkingDisplay() {
         drawIcon16x16(0, 2, epd_bitmap_disabled_sign);
         drawIcon16x16(0, 3, epd_bitmap_power);
 
-        // Update status based on parsed values
-        const char* parkingStatus = parkingValue ? "OCC" : "LIB";
-        const char* disabledStatus = disabledValue ? "OCC" : "LIB";
-        const char* electricStatus = electricValue ? "OCC" : "LIB";
-
         // Display the status
-        drawCenteredText(1, 1, parkingStatus);
-        drawCenteredText(1, 2, disabledStatus);
-        drawCenteredText(1, 3, electricStatus);
+        drawCenteredText(1, 1, parkingValue);
+        drawCenteredText(1, 2, disabledValue);
+        drawCenteredText(1, 3, electricValue);
 
     } while(display.nextPage());
 }
@@ -214,10 +211,7 @@ void loop() {
         payload.trim();
         
         // Parse the payload into individual values
-        parsePayload(payload);
-        
-        // Update the display with new values
-        updateParkingDisplay();
+        parse_update(payload);
     }
     
     // Optional: Add a small delay to prevent excessive processing

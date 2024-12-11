@@ -8,14 +8,19 @@
 using namespace mbed;
 using namespace rtos;
 
-Thread wifiSetupThread;
+Thread connectionSetupThread;
 Thread mqttUpdateThread;
+
+bool connection_setup_done = false;
 
 #define TCA9548A_ADDR 0x70
 
 // WiFi credentials
 const char ssid[] = "parkingG";    
 const char pass[] = "ciaoClaudio"; 
+
+// WiFi stuff
+int status = WL_IDLE_STATUS;
 
 // MQTT broker
 const char broker[] = "test.mosquitto.org";
@@ -116,43 +121,25 @@ void setLEDColor(int ledIndex, int color) {
     }
 }
 
-// Connect to WiFi
-void connectToWiFi() {
+// Connect to WiFi and MQTT
+void setupConnection() {
     Serial.print("Connecting to WiFi...");
-    while (WiFi.begin(ssid, pass) != WL_CONNECTED) {
+    while (status != WL_CONNECTED) {
+        Serial.print("Wifi attempt");
+        status = WiFi.begin(ssid, pass);
         Serial.print(".");
-      ThisThread::sleep_for(1000);
+        ThisThread::sleep_for(1000);
     }
     Serial.println("Connected to WiFi!");
-}
-// void connectToWiFi() {
-//   bool changed = false;
-//   // attempt to connect to Wifi network:
-//   while (status != WL_CONNECTED) {
-//     Serial.print("Attempting to connect to SSID: ");
-//     Serial.println(ssid);
-//     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-//     status = WiFi.begin(ssid, pass);
-//     changed = true;
 
-//     // wait 3 seconds for connection:
-      // ThisThread::sleep_for(3000);
-//   }
-
-//   if (changed) {
-//     Serial.println("Connected to wifi");
-//     printWifiStatus();
-//   }
-// }
-
-// Connect to MQTT broker
-void connectToMQTT() {
     Serial.print("Connecting to MQTT broker...");
     while (!mqttClient.connect(broker, port)) {
         Serial.print(".");
-        delay(1000);
+        ThisThread::sleep_for(1000);
     }
     Serial.println("Connected to MQTT broker!");
+
+    connection_setup_done = true;
 }
 
 void updateMQTT() {
@@ -165,14 +152,26 @@ void updateMQTT() {
       char sensorTopic[50];
       snprintf(sensorTopic, sizeof(sensorTopic), "parking/sensor%d/status", i + 1);
 
-      // Send the MQTT message
-      mqttClient.beginMessage(sensorTopic);
-      mqttClient.print(mqttMessage);
-      mqttClient.endMessage();
+      if (measure.RangeStatus != 4) {
+          int distance = measure.RangeMilliMeter;
+          uint8_t currentState = (distance > 10 && distance <= 70) ? 1 : 0;
 
-      Serial.print("Message sent to topic: ");
-      Serial.println(sensorTopic);
-      Serial.println(mqttMessage);
+          // Prepare the MQTT message based on the new state
+          char mqttMessage[50];
+          if (currentState == 1) {
+              snprintf(mqttMessage, sizeof(mqttMessage), "Occupied");
+          } else {
+              snprintf(mqttMessage, sizeof(mqttMessage), "Free");
+          }
+          // Send the MQTT message
+          mqttClient.beginMessage(sensorTopic);
+          mqttClient.print(mqttMessage);
+          mqttClient.endMessage();
+
+          Serial.print("Message sent to topic: ");
+          Serial.println(sensorTopic);
+          Serial.println(mqttMessage);
+      }
     }
   }
 }
@@ -189,7 +188,7 @@ void setup() {
       while (true);
     }
 
-    wifiSetupThread.start(callback(connectToWiFi));
+    connectionSetupThread.start(callback(setupConnection));
 
     // Initialize LED pins
     for (uint8_t i = 0; i < numSensors; i++) {
@@ -219,7 +218,10 @@ void setup() {
         }
     }
 
-    connectToMQTT();
+    while (connection_setup_done != true) {
+        Serial.println("Waiting for connection...");
+        ThisThread::sleep_for(1000);
+    }
     mqttUpdateThread.start(callback(updateMQTT));
 }
 
@@ -256,29 +258,12 @@ void loop() {
                 Serial.println("-------------------");
                 // Update the previous state
                 previousState[i] = currentState;
-
-                // Prepare the MQTT topic
-                char sensorTopic[50];
-                snprintf(sensorTopic, sizeof(sensorTopic), "parking/sensor%d/status", i + 1);
-
-                // Prepare the MQTT message based on the new state
-                char mqttMessage[50];
+                
                 if (currentState == 1) {
-                    snprintf(mqttMessage, sizeof(mqttMessage), "Occupied");
                     setLEDColor(i, 1);  // Red when object is close (occupied)
                 } else {
-                    snprintf(mqttMessage, sizeof(mqttMessage), "Free");
                     setLEDColor(i, 0);  // Default color when object is far (free)
                 }
-
-                // Send the MQTT message
-                mqttClient.beginMessage(sensorTopic);
-                mqttClient.print(mqttMessage);
-                mqttClient.endMessage();
-
-                Serial.print("Message sent to topic: ");
-                Serial.println(sensorTopic);
-                Serial.println(mqttMessage);
             }
         } else {
             setLEDColor(i, 0);  // Default color when out of range

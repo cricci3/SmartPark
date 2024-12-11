@@ -254,6 +254,8 @@ void loop() {
             uint8_t currentState = (distance > 10 && distance <= 70) ? 1 : 0;
 
             if (currentState != previousState[i]) {  // Check if the state has changed
+                Serial.print("Sensor: ");
+                Serial.print(i);
                 Serial.print("Distance: ");
                 Serial.print(distance);
                 Serial.println(" mm");

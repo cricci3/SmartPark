@@ -19,8 +19,9 @@ bool connection_setup_done = false;
 const char ssid[] = "parkingG";    
 const char pass[] = "ciaoClaudio"; 
 
-// WiFi stuff
-int status = WL_IDLE_STATUS;
+// Connection status
+int wifi_status = WL_IDLE_STATUS;
+int mqtt_status = 0;
 
 // MQTT broker
 const char broker[] = "test.mosquitto.org";
@@ -136,14 +137,15 @@ void setLEDColor(int ledIndex, int color) {
 // Connect to WiFi and MQTT
 void setupConnection() {
     Serial.print("Connecting to WiFi...");
-    while (status != WL_CONNECTED) {
-        status = WiFi.begin(ssid, pass);
+    while (wifi_status != WL_CONNECTED) {
+        wifi_status = WiFi.begin(ssid, pass);
         ThisThread::sleep_for(1000);
     }
     Serial.println("Connected to WiFi!");
 
     Serial.print("Connecting to MQTT broker...");
-    while (!mqttClient.connect(broker, port)) {
+    while (!mqtt_status) {
+        mqtt_status = mqttClient.connect(broker, port)
         ThisThread::sleep_for(1000);
     }
     Serial.println("Connected to MQTT broker!");

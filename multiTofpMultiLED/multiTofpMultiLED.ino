@@ -157,7 +157,7 @@ void connectToMQTT() {
 
 void updateMQTT() {
   Serial.print("MQTT thread started, waiting...");
-  while (True) {
+  while (true) {
     ThisThread::sleep_for(10000);
 
     for (uint8_t i = 0; i < numSensors; i++) {

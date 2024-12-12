@@ -222,6 +222,11 @@ void setup() {
   Serial.print("Subscribed to topic: ");
   Serial.println(sensorTopic0);
 
+  snprintf(sensorTopic1, sizeof(sensorTopic1), "parking/floor1");
+  mqttClient.subscribe(sensorTopic1);
+  Serial.print("Subscribed to topic: ");
+  Serial.println(sensorTopic1);
+
 
   Serial.println("All topics subscribed!");
 

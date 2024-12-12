@@ -158,6 +158,8 @@ void displayThreadFunction() {
           snprintf((char*)zero, 1, "0");
           snprintf((char*)one, 1, "1");
 
+          // TODO: actually write relevant info without crashing, understand why stalls appear to reset
+          
           // drawCenteredText(1,1,stalls[0].standard ? one : zero);
           if (stalls[1].standard) {
             drawIcon16x16(2, 1, epd_bitmap_number_1);

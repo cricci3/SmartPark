@@ -132,6 +132,7 @@ void drawGrid() {
 
 // Display thread function
 void displayThreadFunction() {
+    Serial.println("Display thread started");
     while (true) {
       display.firstPage();
 
@@ -219,16 +220,15 @@ void setup() {
         Serial.println("Failed to subscribe!");
     }
 
-    if (mqttClient.subscribe(sensorTopic1)) {
-        Serial.print("Subscribed to topic: ");
-        Seri
-        al.println(sensorTopic1);
-    } else {
-        Serial.println("Failed to subscribe!");
-    }
+    // if (mqttClient.subscribe(sensorTopic1)) {
+    //     Serial.print("Subscribed to topic: ");
+    //     Seri
+    //     al.println(sensorTopic1);
+    // } else {
+    //     Serial.println("Failed to subscribe!");
+    // }
 
     displayThread.start(callback(displayThreadFunction));
-    Serial.println("Display thread started");
 }
 
 void loop() {

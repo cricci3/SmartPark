@@ -153,7 +153,7 @@ void displayThreadFunction() {
 
       } while(display.nextPage());
          
-    ThisThread::sleep_for(50);
+      ThisThread::sleep_for(50);
     }
 }
 

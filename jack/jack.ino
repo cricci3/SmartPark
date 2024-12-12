@@ -8,6 +8,8 @@
 using namespace mbed;
 using namespace rtos;
 
+Thread displayThread;
+
 bool display_update_needed = true;
 
 // Display setup
@@ -33,6 +35,115 @@ const uint8_t numSensors = 3;
 
 // Array to store sensor topic names
 char sensorTopic[50];
+
+// Display functions
+// Grid configuration
+struct GridConfig {
+    const uint8_t cellWidth = 31;
+    const uint8_t cellHeight = 31;
+    const uint8_t columns = 4;
+    const uint8_t rows = 3;
+    const uint8_t startX = 0;
+    const uint8_t startY = 0;
+};
+
+GridConfig grid;
+
+// Bitmap definitions
+const unsigned char epd_bitmap_parking [] PROGMEM = {
+    0x80, 0x01, 0x7f, 0xfe, 0x7f, 0xfe, 0x78, 0x1e, 0x7b, 0xee, 0x7a, 0x2e, 0x7a, 0xae, 0x7a, 0x6e, 
+    0x7a, 0x1e, 0x7a, 0xfe, 0x7a, 0xfe, 0x7a, 0xfe, 0x78, 0xfe, 0x7f, 0xfe, 0x7f, 0xfe, 0x80, 0x01
+};
+
+const unsigned char epd_bitmap_number_1 [] PROGMEM = {
+    0xff, 0xff, 0xff, 0xff, 0xff, 0x7f, 0xfe, 0x3f, 0xfc, 0x3f, 0xff, 0x3f, 0xff, 0x3f, 0xff, 0x3f,
+    0xff, 0x3f, 0xff, 0x3f, 0xff, 0x3f, 0xff, 0x3f, 0xfc, 0x1f, 0xfc, 0x1f, 0xff, 0xff, 0xff, 0xff
+};
+
+const unsigned char epd_bitmap_number_2 [] PROGMEM = {
+    0xff, 0xff, 0xff, 0xff, 0xfc, 0x7f, 0xf8, 0x3f, 0xff, 0x3f, 0xff, 0x3f, 0xff, 0x7f, 0xfe, 0xff,
+    0xfd, 0xff, 0xfb, 0xff, 0xf7, 0xff, 0xf8, 0x1f, 0xf8, 0x1f, 0xf8, 0x1f, 0xff, 0xff, 0xff, 0xff
+};
+
+const unsigned char epd_bitmap_disabled_sign [] PROGMEM = {
+    0xff, 0xff, 0xf9, 0xff, 0xf6, 0xff, 0xf9, 0xff, 0xfb, 0xff, 0xf8, 0x3f, 0xf0, 0x3f, 0xeb, 0xff, 
+    0xdc, 0x0f, 0xdf, 0xf7, 0xdf, 0xd7, 0xdf, 0xd9, 0xef, 0xbb, 0xf0, 0x7f, 0xfd, 0xff, 0xff, 0xff
+};
+
+const unsigned char epd_bitmap_power [] PROGMEM = {
+    0xfc, 0x3f, 0xe0, 0x07, 0xef, 0xf7, 0xef, 0xf7, 0xef, 0xf7, 0xef, 0xf7, 0xee, 0xf7, 0xee, 0xf7, 
+    0xec, 0x37, 0xef, 0x77, 0xef, 0x77, 0xef, 0xf7, 0xef, 0xf7, 0xef, 0xf7, 0xef, 0xf7, 0xe0, 0x0f
+};
+
+// Drawing functions
+void drawIcon16x16(uint8_t row, uint8_t col, const unsigned char* iconBitmap) {
+    int cellX = grid.startX + (col * grid.cellWidth);
+    int cellY = grid.startY + (row * grid.cellHeight);
+    
+    int iconX = cellX + ((grid.cellWidth - 16) / 2);
+    int iconY = cellY + ((grid.cellHeight - 16) / 2);
+    
+    for(int y = 0; y < 16; y++) {
+        for(int x = 0; x < 16; x++) {
+            int bytePos = y * 2 + (x >= 8 ? 1 : 0);
+            int bit = x % 8;
+            if(iconBitmap[bytePos] & (1 << (7 - bit))) {
+                display.drawPixel(iconX + x, iconY + y);
+            }
+        }
+    }
+}
+
+void drawCenteredText(uint8_t row, uint8_t col, const char* text) {
+    int cellX = grid.startX + (col * grid.cellWidth);
+    int cellY = grid.startY + (row * grid.cellHeight);
+    
+    int textWidth = display.getStrWidth(text);
+    int textHeight = display.getAscent() - display.getDescent();
+    
+    int x = cellX + ((grid.cellWidth - textWidth) / 2) + 1;
+    int y = cellY + ((grid.cellHeight + textHeight) / 2);
+    
+    display.drawStr(x, y, text);
+}
+
+void drawGrid() {
+    display.setDrawColor(DISPLAY_COLOR_GRAY);
+    
+    for(uint8_t i = 0; i <= grid.columns; i++) {
+        int x = grid.startX + (i * grid.cellWidth);
+        display.drawVLine(x, grid.startY, grid.cellHeight * grid.rows);
+    }
+    
+    for(uint8_t i = 0; i <= grid.rows; i++) {
+        int y = grid.startY + (i * grid.cellHeight);
+        display.drawHLine(grid.startX, y, grid.cellWidth * grid.columns);
+    }
+}
+
+// Display thread function
+void displayThreadFunction() {
+    Serial.println("Display thread started");
+    while (true) {
+      display.firstPage();
+
+      do {
+          drawGrid();
+          
+          display.setFont(u8g2_font_logisoso16_tn);
+          display.setDrawColor(DISPLAY_COLOR_WHITE);
+
+          drawIcon16x16(0, 1, epd_bitmap_parking);
+          drawIcon16x16(0, 2, epd_bitmap_disabled_sign);
+          drawIcon16x16(0, 3, epd_bitmap_power);
+          drawIcon16x16(1, 0, epd_bitmap_number_1);
+          drawIcon16x16(2, 0, epd_bitmap_number_2);
+
+      } while(display.nextPage());
+         
+    ThisThread::sleep_for(50);
+    }
+}
 
 // Function to connect to WiFi
 void connectToWiFi() {
@@ -72,6 +183,8 @@ void setup() {
 
 
   Serial.println("All topics subscribed!");
+
+  displayThread.start(callback(displayThreadFunction));
 }
 
 void loop() {

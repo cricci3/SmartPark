@@ -177,6 +177,29 @@ void connectToMQTT() {
   Serial.println("Connected to MQTT broker!");
 }
 
+void parse_payload(String payload, String topic) {
+    Serial.println("Parsing payload...");
+    int firstComma = payload.indexOf(',');
+    int secondComma = payload.lastIndexOf(',');
+    
+    int parkingValue = payload.substring(0, firstComma).toInt();
+    int disabledValue = payload.substring(firstComma + 1, secondComma).toInt();
+    int electricValue = payload.substring(secondComma + 1).toInt();
+    
+    Serial.println("Parsed values:");
+    Serial.print("Parking: ");
+    Serial.println(parkingValue);
+    Serial.print("Disabled: ");
+    Serial.println(disabledValue);
+    Serial.print("Electric: ");
+    Serial.println(electricValue);
+
+    if(topic == "parking/floor0")
+      stalls[0] = {parkingValue, disabledValue, electricValue};
+    else
+      stalls[1] = {parkingValue, disabledValue, electricValue};
+}
+
 void setup() {
   // Initialize serial and wait for the port to open
   Serial.begin(9600);
@@ -224,5 +247,6 @@ void loop() {
       message += (char)mqttClient.read();
     }
     Serial.println(message);
+    parse_payload(message, sensorTopic);
   }
 }

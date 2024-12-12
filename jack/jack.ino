@@ -34,7 +34,8 @@ int port = 1883;
 const uint8_t numSensors = 3;
 
 // Array to store sensor topic names
-char sensorTopic[50];
+char sensorTopic0[50];
+char sensorTopic1[50];
 
 // Parking data
 typedef struct {
@@ -216,10 +217,10 @@ void setup() {
   display.setContrast(255);
   Serial.println("Display initialized");
 
-  snprintf(sensorTopic, sizeof(sensorTopic), "parking/floor0");
-  mqttClient.subscribe(sensorTopic);
+  snprintf(sensorTopic0, sizeof(sensorTopic0), "parking/floor0");
+  mqttClient.subscribe(sensorTopic0);
   Serial.print("Subscribed to topic: ");
-  Serial.println(sensorTopic);
+  Serial.println(sensorTopic0);
 
 
   Serial.println("All topics subscribed!");
@@ -247,6 +248,6 @@ void loop() {
       message += (char)mqttClient.read();
     }
     Serial.println(message);
-    parse_payload(message, sensorTopic);
+    parse_payload(message, mqttClient.messageTopic());
   }
 }

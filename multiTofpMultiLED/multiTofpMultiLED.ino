@@ -161,6 +161,18 @@ void updateMQTT() {
   }
 
   while (true) {
+    // Check if connection is still good
+    wifi_status = WiFi.status();
+    if (wifi_status != WL_CONNECTED) {
+      Serial.println("WiFi connection was lost! Attempting to reconnect...");
+      connection_setup_done = false;
+      mqtt_status = 0;
+      connectionSetupThread.start(callback(setupConnection));
+      while (!connection_setup_done) {
+        ThisThread::sleep_for(1000);
+      }
+    }
+
     // Prepare the MQTT topic
     char sensorTopic[50];
     snprintf(sensorTopic, sizeof(sensorTopic), "parking/floor%d", FLOOR_NUMBER);

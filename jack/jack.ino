@@ -176,6 +176,11 @@ void setup() {
   connectToWiFi();
   connectToMQTT();
 
+  // Display setup
+  display.begin();
+  display.setContrast(255);
+  Serial.println("Display initialized");
+
   snprintf(sensorTopic, sizeof(sensorTopic), "parking/floor0");
   mqttClient.subscribe(sensorTopic);
   Serial.print("Subscribed to topic: ");

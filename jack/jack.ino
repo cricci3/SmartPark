@@ -152,6 +152,21 @@ void displayThreadFunction() {
           drawIcon16x16(1, 0, epd_bitmap_number_1);
           drawIcon16x16(2, 0, epd_bitmap_number_2);
 
+          const char* zero = (const char*)malloc(1);
+          const char* one = (const char*)malloc(1);
+
+          snprintf((char*)zero, 1, "0");
+          snprintf((char*)one, 1, "1");
+
+          // drawCenteredText(1,1,stalls[0].standard ? one : zero);
+          if (stalls[1].standard) {
+            drawIcon16x16(2, 1, epd_bitmap_number_1);
+          } else {
+            drawIcon16x16(2, 1, epd_bitmap_number_2);
+          }
+          drawCenteredText(2,2,stalls[1].handicap ? one : zero);
+          drawCenteredText(2,3,stalls[1].echarge ? one : zero);
+
       } while(display.nextPage());
          
       ThisThread::sleep_for(50);

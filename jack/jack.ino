@@ -36,6 +36,18 @@ const uint8_t numSensors = 3;
 // Array to store sensor topic names
 char sensorTopic[50];
 
+// Parking data
+typedef struct {
+  bool standard;
+  bool handicap;
+  bool echarge;
+} ParkingStalls;
+
+ParkingStalls stalls [] = {
+  {false,false,false},  //floor 0
+  {false,false,false}   //floor 1
+};
+
 // Display functions
 // Grid configuration
 struct GridConfig {
@@ -206,9 +218,11 @@ void loop() {
     Serial.println(messageSize);
 
     Serial.print("Message: ");
+    String message = "";
     while (mqttClient.available()) {
-      Serial.print((char)mqttClient.read());
+      // Serial.print((char)mqttClient.read());
+      message += (char)mqttClient.read();
     }
-    Serial.println();
+    Serial.println(message);
   }
 }

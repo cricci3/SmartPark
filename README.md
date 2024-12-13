@@ -10,13 +10,13 @@ The Smart Park system monitors parking spots and provides real-time status updat
 
 - LED indicators to visually display the parking status:
 
-  - 🅿️ Green LED: Parking spot is available
+  - 🅿️ Green LED 🟢: Parking spot is available
 
-  - ♿️ Yellow LED: disabled Parking spot is available 
+  - ♿️ Yellow LED 🟡: disabled Parking spot is available 
 
-  - 🔋 Violet LED: E-charge station is available 
+  - 🔋 Violet LED 🟣: E-charge station is available 
 
-  - 🚫 Red LED: Parking spot is occupied 
+  - 🚫 Red LED 🔴: Parking spot is occupied 
 
 - MQTT protocol: To enable communication between multiple Arduinos in the system.
 

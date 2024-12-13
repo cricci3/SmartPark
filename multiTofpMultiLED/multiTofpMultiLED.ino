@@ -10,24 +10,26 @@ using namespace rtos;
 
 Thread connectionSetupThread;
 Thread mqttUpdateThread;
+Thread serialSetupThread;
 
 bool connection_setup_done = false;
 
 #define TCA9548A_ADDR 0x70
 
 // WiFi credentials
-const char ssid[] = "parkingG";    
-const char pass[] = "ciaoClaudio"; 
+const char ssid[] = "Error404";    
+const char pass[] = "derde01()!"; 
 
-// WiFi stuff
-int status = WL_IDLE_STATUS;
+// Connection status
+int wifi_status = WL_IDLE_STATUS;
+int mqtt_status = 0;
 
 // MQTT broker
 const char broker[] = "test.mosquitto.org";
 int        port     = 1883;
 
 // Floor number for comms with central controller
-#define FLOOR_NUMBER 0
+#define FLOOR_NUMBER 1
 
 // Parking status
 typedef struct {
@@ -134,15 +136,17 @@ void setLEDColor(int ledIndex, int color) {
 
 // Connect to WiFi and MQTT
 void setupConnection() {
-    Serial.print("Connecting to WiFi...");
-    while (status != WL_CONNECTED) {
-        status = WiFi.begin(ssid, pass);
+    Serial.println("Connecting to WiFi...");
+    while (wifi_status != WL_CONNECTED) {
+        Serial.println("Attempting WiFi connection");
+        wifi_status = WiFi.begin(ssid, pass);
         ThisThread::sleep_for(1000);
     }
     Serial.println("Connected to WiFi!");
 
-    Serial.print("Connecting to MQTT broker...");
-    while (!mqttClient.connect(broker, port)) {
+    Serial.println("Connecting to MQTT broker...");
+    while (!mqtt_status) {
+        mqtt_status = mqttClient.connect(broker, port);
         ThisThread::sleep_for(1000);
     }
     Serial.println("Connected to MQTT broker!");
@@ -157,6 +161,18 @@ void updateMQTT() {
   }
 
   while (true) {
+    // Check if connection is still good
+    wifi_status = WiFi.status();
+    if (wifi_status != WL_CONNECTED) {
+      Serial.println("WiFi connection was lost! Attempting to reconnect...");
+      connection_setup_done = false;
+      mqtt_status = 0;
+      connectionSetupThread.start(callback(setupConnection));
+      while (!connection_setup_done) {
+        ThisThread::sleep_for(1000);
+      }
+    }
+
     // Prepare the MQTT topic
     char sensorTopic[50];
     snprintf(sensorTopic, sizeof(sensorTopic), "parking/floor%d", FLOOR_NUMBER);
@@ -177,9 +193,17 @@ void updateMQTT() {
   }
 }
 
+void setupSerial() {
+  while (!Serial) {
+    ThisThread::sleep_for(1);
+  }
+  Serial.println("Serial connected");
+}
+
 void setup() {
     Serial.begin(115200);
-    while (!Serial) delay(1);
+    serialSetupThread.start(callback(setupSerial));
+    ThisThread::sleep_for(1000);
     Wire.begin();
 
     // check for the WiFi module:
@@ -229,6 +253,10 @@ void setup() {
 void loop() {
     mqttClient.poll();
 
+    if (!Serial) {
+        serialSetupThread.start(callback(setupSerial));
+    }
+
     // Static array to track the previous state of each parking spot (0: free, 1: occupied)
     static uint8_t previousState[numSensors] = {0};  // Initialize all spots as free
 
@@ -253,6 +281,7 @@ void loop() {
             uint8_t currentState = (distance > 10 && distance <= 70) ? 1 : 0;
 
             if (currentState != previousState[i]) {  // Check if the state has changed
+                Serial.println("Sensor update");
                 Serial.print("Sensor: ");
                 Serial.println(i);
                 Serial.print("Distance: ");
@@ -314,6 +343,5 @@ void loop() {
     // Add a short delay to avoid overwhelming the system
     ThisThread::sleep_for(200);
 }
-
 
 

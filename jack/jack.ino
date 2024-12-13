@@ -10,8 +10,6 @@ using namespace rtos;
 
 Thread displayThread;
 
-bool display_update_needed = true;
-
 // Display setup
 U8G2_SSD1327_EA_W128128_F_4W_SW_SPI display(U8G2_R0, 13, 5, 10, 7, 8);
 Adafruit_VL53L0X distanceSensor = Adafruit_VL53L0X();
@@ -21,8 +19,8 @@ const uint8_t DISPLAY_COLOR_WHITE = 255;
 const uint8_t DISPLAY_COLOR_GRAY = 150;
 
 // WiFi credentials
-char ssid[] = "parkingG";    // your network SSID
-char pass[] = "ciaoClaudio"; // your network password
+char ssid[] = "Error404";    // your network SSID
+char pass[] = "derde01()!"; // your network password
 
 WiFiClient wifiClient;
 MqttClient mqttClient(wifiClient);
@@ -30,8 +28,6 @@ MqttClient mqttClient(wifiClient);
 const char broker[] = "test.mosquitto.org";
 int port = 1883;
 
-// Maximum number of sensors to handle
-const uint8_t numSensors = 3;
 
 // Array to store sensor topic names
 char sensorTopic0[50];
@@ -151,23 +147,37 @@ void displayThreadFunction() {
           drawIcon16x16(0, 3, epd_bitmap_power);
           drawIcon16x16(1, 0, epd_bitmap_number_1);
           drawIcon16x16(2, 0, epd_bitmap_number_2);
-
-          const char* zero = (const char*)malloc(1);
-          const char* one = (const char*)malloc(1);
-
-          snprintf((char*)zero, 1, "0");
-          snprintf((char*)one, 1, "1");
-
-          // TODO: actually write relevant info without crashing, understand why stalls appear to reset
           
-          // drawCenteredText(1,1,stalls[0].standard ? one : zero);
           if (stalls[1].standard) {
-            drawIcon16x16(2, 1, epd_bitmap_number_1);
+            drawCenteredText(2,1,"1");
           } else {
-            drawIcon16x16(2, 1, epd_bitmap_number_2);
+            drawCenteredText(2,1,"0");
           }
-          drawCenteredText(2,2,stalls[1].handicap ? one : zero);
-          drawCenteredText(2,3,stalls[1].echarge ? one : zero);
+          if(stalls[1].handicap){
+            drawCenteredText(2,2,"1");
+          } else {
+            drawCenteredText(2,2,"0");
+          }
+            if(stalls[1].echarge){
+            drawCenteredText(2,3,"1");
+          } else {
+            drawCenteredText(2,3,"0");
+          }
+               if (stalls[0].standard) {
+            drawCenteredText(1,1,"1");
+          } else {
+            drawCenteredText(1,1,"0");
+          }
+          if(stalls[0].handicap){
+            drawCenteredText(1,2,"1");
+          } else {
+            drawCenteredText(1,2,"0");
+          }
+            if(stalls[0].echarge){
+            drawCenteredText(1,3,"1");
+          } else {
+            drawCenteredText(1,3,"0");
+          }
 
       } while(display.nextPage());
          
@@ -212,17 +222,32 @@ void parse_payload(String payload, String topic) {
     Serial.print("Electric: ");
     Serial.println(electricValue);
 
-    if(topic == "parking/floor0")
+
+    String numberText = topic.substring(topic.length() - 1, topic.length());
+    Serial.print("Number text: ");
+    Serial.println(numberText);
+    int floorNo = numberText.toInt();
+    Serial.print("Topic text: ");
+    Serial.println(topic);
+    Serial.print("Number: ");
+    Serial.println(floorNo);
+
+    if(floorNo == 0) {
       stalls[0] = {parkingValue, disabledValue, electricValue};
-    else
+      Serial.print("Received topic 0");
+    }
+    else {
       stalls[1] = {parkingValue, disabledValue, electricValue};
+      Serial.print("Received topic 1 ");
+    }
+
 }
 
 void setup() {
   // Initialize serial and wait for the port to open
   Serial.begin(9600);
   while (!Serial) {
-    ; // wait for serial port to connect
+    ; 
   }
 
   // Connect to WiFi and MQTT broker
@@ -236,13 +261,9 @@ void setup() {
 
   snprintf(sensorTopic0, sizeof(sensorTopic0), "parking/floor0");
   mqttClient.subscribe(sensorTopic0);
-  Serial.print("Subscribed to topic: ");
-  Serial.println(sensorTopic0);
 
   snprintf(sensorTopic1, sizeof(sensorTopic1), "parking/floor1");
   mqttClient.subscribe(sensorTopic1);
-  Serial.print("Subscribed to topic: ");
-  Serial.println(sensorTopic1);
 
 
   Serial.println("All topics subscribed!");
@@ -251,25 +272,19 @@ void setup() {
 }
 
 void loop() {
-  // Regularly call poll() to process incoming messages
   mqttClient.poll();
 
-  // Check for incoming messages on subscribed topics
   int messageSize = mqttClient.parseMessage();
   if (messageSize) {
+    String topic = mqttClient.messageTopic();
     Serial.print("Received a message on topic: ");
-    Serial.println(mqttClient.messageTopic());
+    Serial.println(topic);
 
-    Serial.print("Message size: ");
-    Serial.println(messageSize);
-
-    Serial.print("Message: ");
     String message = "";
     while (mqttClient.available()) {
-      // Serial.print((char)mqttClient.read());
       message += (char)mqttClient.read();
     }
-    Serial.println(message);
-    parse_payload(message, mqttClient.messageTopic());
+
+    parse_payload(message, topic);
   }
 }

@@ -31,6 +31,10 @@ int        port     = 1883;
 // Floor number for comms with central controller
 #define FLOOR_NUMBER 1
 
+// Distance thresholds
+#define DISTANCE_LOW 10
+#define DISTANCE_FAR 50
+
 // Parking status
 typedef struct {
     bool standard;
@@ -278,7 +282,7 @@ void loop() {
             // Serial.println(" mm");
 
             // Determine the current state: 1 if occupied (distance <= 70), 0 if free
-            uint8_t currentState = (distance > 10 && distance <= 70) ? 1 : 0;
+            uint8_t currentState = (distance > DISTANCE_LOW && distance <= DISTANCE_FAR) ? 1 : 0;
 
             if (currentState != previousState[i]) {  // Check if the state has changed
                 Serial.println("Sensor update");

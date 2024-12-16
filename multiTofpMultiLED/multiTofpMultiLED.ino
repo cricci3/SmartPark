@@ -29,7 +29,7 @@ const char broker[] = "test.mosquitto.org";
 int        port     = 1883;
 
 // Floor number for comms with central controller
-#define FLOOR_NUMBER 1
+#define FLOOR_NUMBER 0
 
 // Distance thresholds
 #define DISTANCE_LOW 10
@@ -193,7 +193,7 @@ void updateMQTT() {
     Serial.println(sensorTopic);
     Serial.println(mqttMessage);
     
-    ThisThread::sleep_for(10000);
+    ThisThread::sleep_for(2500);
   }
 }
 

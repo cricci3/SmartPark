@@ -21,3 +21,7 @@ The Smart Park system monitors parking spots and provides real-time status updat
 - MQTT protocol: To enable communication between multiple Arduinos in the system.
 
 This project showcases edge computing principles by processing parking spot data locally on the Arduino devices, while coordinating state updates across the system using MQTT.
+
+<p align="center">
+  <img src="SmartPark/images/IoT.png" width="500">
+</p>

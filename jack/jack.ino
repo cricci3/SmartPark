@@ -149,34 +149,34 @@ void displayThreadFunction() {
           drawIcon16x16(2, 0, epd_bitmap_number_2);
           
           if (stalls[1].standard) {
-            drawCenteredText(2,1,"1");
-          } else {
             drawCenteredText(2,1,"0");
+          } else {
+            drawCenteredText(2,1,"1");
           }
           if(stalls[1].handicap){
-            drawCenteredText(2,2,"1");
-          } else {
             drawCenteredText(2,2,"0");
-          }
-            if(stalls[1].echarge){
-            drawCenteredText(2,3,"1");
           } else {
+            drawCenteredText(2,2,"1");
+          }
+          if(stalls[1].echarge){
             drawCenteredText(2,3,"0");
-          }
-               if (stalls[0].standard) {
-            drawCenteredText(1,1,"1");
           } else {
+            drawCenteredText(2,3,"1");
+          }
+          if (stalls[0].standard) {
             drawCenteredText(1,1,"0");
+          } else {
+            drawCenteredText(1,1,"1");
           }
           if(stalls[0].handicap){
-            drawCenteredText(1,2,"1");
-          } else {
             drawCenteredText(1,2,"0");
-          }
-            if(stalls[0].echarge){
-            drawCenteredText(1,3,"1");
           } else {
+            drawCenteredText(1,2,"1");
+          }
+          if(stalls[0].echarge){
             drawCenteredText(1,3,"0");
+          } else {
+            drawCenteredText(1,3,"1");
           }
 
       } while(display.nextPage());
@@ -222,25 +222,16 @@ void parse_payload(String payload, String topic) {
     Serial.print("Electric: ");
     Serial.println(electricValue);
 
-
-    String numberText = topic.substring(topic.length() - 1, topic.length());
-    Serial.print("Number text: ");
-    Serial.println(numberText);
-    int floorNo = numberText.toInt();
-    Serial.print("Topic text: ");
-    Serial.println(topic);
-    Serial.print("Number: ");
-    Serial.println(floorNo);
+    int floorNo = topic.substring(topic.length() - 2, topic.length()).toInt();
 
     if(floorNo == 0) {
       stalls[0] = {parkingValue, disabledValue, electricValue};
-      Serial.print("Received topic 0");
+        Serial.print("Received topic 0 ");
     }
     else {
-      stalls[1] = {parkingValue, disabledValue, electricValue};
-      Serial.print("Received topic 1 ");
+        stalls[1] = {parkingValue, disabledValue, electricValue};
+        Serial.print("Received topic 1 ");
     }
-
 }
 
 void setup() {
@@ -265,7 +256,6 @@ void setup() {
   snprintf(sensorTopic1, sizeof(sensorTopic1), "parking/floor1");
   mqttClient.subscribe(sensorTopic1);
 
-
   Serial.println("All topics subscribed!");
 
   displayThread.start(callback(displayThreadFunction));
@@ -276,15 +266,14 @@ void loop() {
 
   int messageSize = mqttClient.parseMessage();
   if (messageSize) {
-    String topic = mqttClient.messageTopic();
     Serial.print("Received a message on topic: ");
-    Serial.println(topic);
+    Serial.println(mqttClient.messageTopic());
 
     String message = "";
     while (mqttClient.available()) {
       message += (char)mqttClient.read();
     }
 
-    parse_payload(message, topic);
+    parse_payload(message, mqttClient.messageTopic());
   }
 }

@@ -23,5 +23,5 @@ The Smart Park system monitors parking spots and provides real-time status updat
 This project showcases edge computing principles by processing parking spot data locally on the Arduino devices, while coordinating state updates across the system using MQTT.
 
 <p align="center">
-  <img src="SmartPark/images/IoT.png" width="500">
+  <img src="https://github.com/cricci3/SmartPark/blob/main/images/Iot.png" width="800">
 </p>

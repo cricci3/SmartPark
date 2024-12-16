@@ -43,7 +43,7 @@ Transform your parking management with a sleek, real-time dashboard that monitor
 git clone <repository-url>
 
 # Navigate to project directory
-cd smart-park-dashboard
+cd smart-park-app
 
 # Install dependencies
 npm install

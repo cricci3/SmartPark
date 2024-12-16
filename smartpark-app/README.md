@@ -75,19 +75,7 @@ Visit [http://localhost:3000](http://localhost:3000) to see your dashboard in ac
 // 0 = available, 1 = occupied
 ```
 
-## 🛠️ Development
 
-```plaintext
-smart-park-dashboard/
-├── app/
-│   └── page.tsx          # Main dashboard
-├── components/
-│   ├── mqtt-config       # MQTT settings
-│   ├── floor-section     # Floor display
-│   └── parking-spot      # Spot indicators
-└── public/
-    └── assets/          # Static resources
-```
 
 ## 🤝 Contributing
 

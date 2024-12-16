@@ -18,6 +18,7 @@
 char ssid[] = "parkingG";    // your network SSID (name)
 char pass[] = "ciaoClaudio";    // your network password (use for WPA, or use as key for WEP)
 
+
 // To connect with SSL/TLS:
 // 1) Change WiFiClient to WiFiSSLClient.
 // 2) Change port value from 1883 to 8883.
@@ -77,31 +78,64 @@ void setup() {
 }
 
 void loop() {
-  // call poll() regularly to allow the library to send MQTT keep alives which
-  // avoids being disconnected by the broker
-  mqttClient.poll();
+    mqttClient.poll();
 
-  // to avoid having delays in loop, we'll use the strategy from BlinkWithoutDelay
-  // see: File -> Examples -> 02.Digital -> BlinkWithoutDelay for more info
-  unsigned long currentMillis = millis();
-  
-  if (currentMillis - previousMillis >= interval) {
-    // save the last time a message was sent
-    previousMillis = currentMillis;
+    // Array to keep track of the previous state of each parking spot (0: free, 1: occupied)
+    static uint8_t previousState[numSensors] = {0};  // Initialize all spots as free
 
-    Serial.print("Sending message to topic: ");
-    Serial.println(topic);
-    Serial.print("hello ");
-    Serial.println(count);
+    for (uint8_t i = 0; i < numSensors; i++) {
+        TCA9548A_Select(sensorBuses[i]);
+        VL53L0X_RangingMeasurementData_t measure;
+        sensors[i].rangingTest(&measure, false);
 
-    // send message, the Print interface can be used to set the message contents
-    mqttClient.beginMessage(topic);
-    mqttClient.print("hello ");
-    mqttClient.print(count);
-    mqttClient.endMessage();
+        Serial.print("Sensor ");
+        Serial.print(i);
+        Serial.print(" (Bus ");
+        Serial.print(sensorBuses[i]);
+        Serial.print("): ");
 
-    Serial.println();
+        if (measure.RangeStatus != 4) {
+            int distance = measure.RangeMilliMeter;
+            Serial.print("Distance: ");
+            Serial.print(distance);
+            Serial.println(" mm");
 
-    count++;
-  }
+            // Determine the current state: 1 if occupied (distance <= 70), 0 if free
+            uint8_t currentState = (distance > 0 && distance <= 70) ? 1 : 0;
+
+            if (currentState != previousState[i]) {  // Check if the state has changed
+                // Update the previous state
+                previousState[i] = currentState;
+
+                // Prepare the MQTT topic
+                char sensorTopic[50];
+                snprintf(sensorTopic, sizeof(sensorTopic), "parking/sensor%d/status", i + 1);
+
+                // Prepare the MQTT message based on the new state
+                char mqttMessage[50];
+                if (currentState == 1) {
+                    snprintf(mqttMessage, sizeof(mqttMessage), "Occupied");
+                    setLEDColor(i, 1);  // Red when object is close (occupied)
+                } else {
+                    snprintf(mqttMessage, sizeof(mqttMessage), "Free");
+                    setLEDColor(i, 0);  // Default color when object is far (free)
+                }
+
+                // Send the MQTT message if the state has changed
+                mqttClient.beginMessage(sensorTopic);
+                mqttClient.print(mqttMessage);
+                mqttClient.endMessage();
+
+                Serial.print("Message sent to topic: ");
+                Serial.println(sensorTopic);
+                Serial.println(mqttMessage);
+            }
+        } else {
+            Serial.println("Out of range");
+            setLEDColor(i, 0);  // Default color when out of range
+        }
+
+        Serial.println("-------------------");
+    }
+    delay(100);
 }

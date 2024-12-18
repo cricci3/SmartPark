@@ -17,8 +17,8 @@ bool connection_setup_done = false;
 #define TCA9548A_ADDR 0x70
 
 // WiFi credentials
-const char ssid[] = "Error404";    
-const char pass[] = "derde01()!"; 
+const char ssid[] = "Claudio";    
+const char pass[] = "kruskal2023"; 
 
 // Connection status
 int wifi_status = WL_IDLE_STATUS;
@@ -252,6 +252,8 @@ void setup() {
             Serial.println(" OK");
         }
     }
+    Watchdog &watchdog = Watchdog::get_instance();
+    watchdog.start(5000); // start watchdog with timeout in ms
 }
 
 void loop() {
@@ -346,6 +348,5 @@ void loop() {
 
     // Add a short delay to avoid overwhelming the system
     ThisThread::sleep_for(200);
+    Watchdog::get_instance().kick(); // reset watchdog timer }
 }
-
-

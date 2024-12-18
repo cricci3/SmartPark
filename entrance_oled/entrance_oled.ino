@@ -259,6 +259,9 @@ void setup() {
   Serial.println("All topics subscribed!");
 
   displayThread.start(callback(displayThreadFunction));
+  
+  Watchdog &watchdog = Watchdog::get_instance();
+  watchdog.start(5000); // start watchdog with timeout in ms
 }
 
 void loop() {
@@ -276,4 +279,5 @@ void loop() {
 
     parse_payload(message, mqttClient.messageTopic());
   }
+  Watchdog::get_instance().kick(); // reset watchdog timer 
 }
